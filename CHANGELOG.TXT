@@ -1,0 +1,49 @@
+% Changelog: 
+
+2014/June/05 (Rody Oldenhuis)
+- CHANGED: step adjustment now also considers RelTol (which might be more stringent            than AbsTol)
+- FIXED: minor adjustments to allow for settings like AbsTol = inf
+
+
+2014/June/04 (Rody Oldenhuis)
+- FIXED: incorrect initial stepsize was selected in recursive calls (dense 
+         output)
+- FIXED: The power used in stepsize control should be based on the method's 
+         order, PLUS 2 for embedded p/q pairs with |p-q|=2. So, not 1/12, 
+         but 1/14.
+
+
+2014/June/03 (Rody Oldenhuis)
+- FIXED: error estimates turned NaN (divide-by-zero) when f turned all zero
+
+
+2014/February/14 (Rody Oldenhuis)-
+- CHANGED: included "Authors" field, donation link.
+- NEW: implemented support for deval(). Note that MATLAB built-in deval()
+       does not support rkn1210; a customized version is in the making.
+
+
+2013/November/05 (Rody Oldenhuis)
+- Found & fixed bug in handling of event functions
+- Found & fixed bug in nitegrating in negative direction
+- Corrected & improved error handling 
+- Replaced narginchk() with a simple assert, and replaced tildes to supress output 
+  argument with dummy variable names; this decreases MATLAB version requirements 
+  to R2008a
+- Array growth is now by a constant fraction of the current size; this 
+  improves performance and has better memory complexity properties
+    
+
+2013/June/11 (Rody Oldenhuis)
+- Set 'InitialStep' to previous step on recursive calls to RKN1210
+
+
+2013/June/07 (Rody Oldenhuis)
+- Added value of the second derivative for succesful steps to the output structure
+- No memory is assigned for output variables when no output arguments are requested       
+- Removed all support for funtions defined be string; only function handles 
+- Added a few more checks on user inputs
+- Updated elementary example
+- Minor stylistic changes
+
+ 
