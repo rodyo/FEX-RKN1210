@@ -1,0 +1,2 @@
+add support for string functions with feval/varargin{:}
+create custom deval() which extends built-in version
