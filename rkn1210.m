@@ -220,6 +220,13 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
 % Changelog: 
 %{
+2014/June/04 (Rody Oldenhuis)
+- FIXED: incorrect initial stepsize was selected in recursive calls (dense 
+         output)
+- FIXED: The power used in stepsize control should be based on the method's 
+         order, PLUS 2 for embedded p/q pairs with |p-q|=2. So, not 1/12, 
+         but 1/14.
+
 2014/June/03 (Rody Oldenhuis)
 - FIXED: error estimates turned NaN (divide-by-zero) when f turned all zero
 
@@ -537,7 +544,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
     %% Initialize
     
     % initialize all variables           
-       exitflag = 0;                          pow = 1/12;    
+       exitflag = 0;                          pow = 1/14; 
              t0 = tspan(1);                tfinal = tspan(end);
               t = t0;                           y = y0(:);
              dy = yp0(:);                    tout = t0;
@@ -682,7 +689,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             
             % new initial step is old next-to-last step
             options = odeset(options, ...
-                'InitialStep', outputI.h(end-1)); 
+                'InitialStep', outputI.h(max(1,end-1))); 
             
             % append the solutions
             yout  = [yout;  youtI(end, :)];  %#ok
@@ -751,7 +758,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
     
     if isempty(initialstep)
         % default initial step
-        h = abstol^pow / max(max(abs([dy.' f(:, 1).'])), 1e-4);
+        h = abstol^pow / max(max(abs([dy.' f(:,1).'])), 1e-4);
         h = min(hmax,max(h,hmin));        
         
     else
@@ -771,7 +778,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
     
     % the main loop    
     while (abs(t-tfinal) > 0)
-        
+                
         % take care of final step
         if ( direction*(t+h) > direction*tfinal)
             h = direction*max(hmin, abs(t-tfinal)); end
@@ -782,7 +789,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         % Compute the second-derivative
         % NOTE: 'Vectorized' in ODESET() has no use; we need the UPDATED
         % function values to calculate the NEW ones, i.e., the function
-        % evaluations are not independent. 
+        % evaluations are not independent.
         for jj = 1:17
             f(:,jj) = funfcn( t + c(jj)*h, y + c(jj)*h*dy + h2*f*A(:,jj) );            
             output.fevals = output.fevals + 1;
@@ -807,18 +814,20 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         delta2 = max(abs(h*(fBphat - f*Bp)));% error ~ |dot{Y} - dot{y}|
         delta  = max(delta1, delta2);        % worst case error
 
-        % update the solution only if the error is acceptable        
+        % update the solution only if the error is acceptable 
+        new_y  =  y + h*dy+h2*fBhat;
+        new_dy = dy + h*fBphat;
         if (delta <= abstol) && ...
-           (delta <= reltol*max(norm(y+h*dy+h2*fBhat),norm(dy+h*fBphat)))
+           (delta <= reltol*max(norm(new_y),norm(new_dy)))
             
             % update the new solution
             index = index + 1;
             tp    = t;
             t     = t + h;  
             yp    = y;
-            y     = y + h*dy + h2*fBhat;
+            y     = new_y;
             dyp   = dy;
-            dy    = dy + h*fBphat; 
+            dy    = new_dy;
             
             % if new values won't fit, first grow the arrays
             % NOTE: This construction is WAY better than growing the arrays on
@@ -932,7 +941,11 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
         % adjust the step size
         if (delta ~= 0)
-            h = direction*min(hmax, 0.9*abs(h)*(abstol/delta)^pow);
+            h_new = direction * min(hmax, ...
+                0.9*abs(h)*( min(abstol, reltol*max(norm(new_y),norm(new_dy))) / delta )^pow);
+            if h_new~=0
+                h = h_new; end
+            
             % Use [Refine]-option when output functions are present
             if have_outputFcn
                 h = h/Refine; end           
@@ -946,7 +959,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                     'A singularity is likely.'], t, hmin);
             end            
         end % adjust step-size
-        
+     
     end % main loop
     
     % if the algorithm ends up here, all was ok
