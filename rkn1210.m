@@ -774,7 +774,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         delta  = max(delta1, delta2);        % worst case error
 
         % update the solution only if the error is acceptable
-        new_y  =  y + h*dy+h2*fBhat;
+        new_y  =  y + h*dy + h2*fBhat;
         new_dy = dy + h*fBphat;
         if (delta <= abstol) && ...
            (delta <= reltol*max(norm(new_y),norm(new_dy)))
@@ -809,7 +809,6 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
             % evaluate event-funtions
             if have_events
-                % evaluate all event-functions
                 for k = 1:num_events
                     % evaluate event function, and check if any have changed sign
                     %
@@ -870,15 +869,20 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
             % evaluate output functions
             if have_outputFcn
-                % evaluate all event-functions
                 for k = 1:num_outputFcn
-                    % evaluate output function
+                    % evaluate kth output function
                     try
-                        halt = OutputFcn{k}(t, y(OutputSel), dy(OutputSel), []);
+                        % TODO: behavior inconsistent with that of ODE suite
+                        halt = OutputFcn{k}(...
+                            t + c*h, ...
+                            y (OutputSel), ...
+                            dy(OutputSel), ...
+                            []);
 
                     catch ME
-                        ME2 = MException('rkn1210:OutputFcn_failure_integration',...
-                            sprintf('Output function #%1d failed to evaluate during integration.', k));
+                        ME2 = MException(...
+                            'rkn1210:OutputFcn_failure_integration',...
+                            'Output function #%1d failed to evaluate during integration.', k);
                         throw(addCause(ME,ME2));
 
                     end
