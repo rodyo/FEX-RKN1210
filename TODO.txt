@@ -1,3 +1,5 @@
+Compare with ode113 in the demo
+
 OutputFcn behaves differently from that of ode45 
 Check whether p+2 for the stepsize adjustment is indeed correct!
 add support for string functions with feval/varargin{:}

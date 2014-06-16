@@ -12,7 +12,7 @@ function rkn1210_DEMO
 % E-mail     : oldenhuis@gmail.com    (personal)
 %              oldenhuis@luxspace.lu  (professional)
 % Affiliation: LuxSpace sàrl
-% Licence    : GPL + anything implied by placing it on the FEX
+% Licence    : BSD
 %
 % Please report any bugs or suggestions to oldenhuis@gmail.com
 
