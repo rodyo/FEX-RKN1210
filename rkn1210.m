@@ -705,12 +705,10 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
     try
         f(:,1) = funfcn(t, y);
-
     catch ME
         ME2 = MException('rkn1210:incorrect_funfcnoutput', sprintf(...
             'Derivative function should return a %3.0f-element column vector.', numel(y0)));
-        throw(addCause(ME,ME2));
-
+        throw(addCause(ME,ME2));        
     end
 
     output.fevals = output.fevals + 1; % don't forget this one :)
@@ -842,7 +840,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                                     ME2 = MException('rkn1210:eventFcn_failure_zero',...
                                         sprintf('Failed to locate a zero for event function #%1d.', k));
                                     throw(addCause(ME2,ME));
-
+                                    
                                 end
                             end
                         end
