@@ -503,7 +503,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
     %% Initialize
 
     % initialize all variables
-       exitflag = 0;                          pow = 1/14;
+       exitflag = 0;                          pow = 1/11;
              t0 = tspan(1);                tfinal = tspan(end);
               t = t0;                           y = y0(:);
              dy = yp0(:);                    tout = t0;
@@ -769,9 +769,9 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         fBphat = f*Bphat;   fBhat  = f*Bhat;
 
         % Estimate the error and the acceptable error
-        delta1 = max(abs(h2*(fBhat - f*B))); % error ~ |Y - y|
-        delta2 = max(abs(h*(fBphat - f*Bp)));% error ~ |dot{Y} - dot{y}|
-        delta  = max(delta1, delta2);        % worst case error
+        delta1 = norm(h2*(fBhat  - f*B ), 'inf'); % error ~ |Y - y|
+        delta2 = norm(h *(fBphat - f*Bp), 'inf'); % error ~ |dot{Y} - dot{y}|
+        delta  = max(delta1, delta2);             % worst case error
 
         % update the solution only if the error is acceptable
         new_y  =  y + h*dy + h2*fBhat;
