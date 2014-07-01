@@ -204,12 +204,12 @@ toc
 disp('Maximum absolute error:')
 max( (y1(:,1)-cos(t1)).^2 + (y1(:,2)-sin(t1)).^2 )
 
-% This is how much ODE45 will have to be tuned to achieve similar accuracy
+% This is how much ODE113 will have to be tuned to achieve similar accuracy
 fprintf('\n\n')
-disp('Compare with ODE45, which needs AbsTol = RelTol = 1e-8:')
-options = odeset('RelTol', 1e-8, 'AbsTol', 1e-8);
+disp('Compare with ODE113, which needs AbsTol = RelTol = 8e-9:')
+options = odeset('RelTol', 8e-9, 'AbsTol', 8e-9);
 tic
-  [t2, y2] = ode45(f2, [0, 1000], [1; 0; 0; 1], options);
+  [t2, y2] = ode113(f2, [0, 1000], [1; 0; 0; 1], options);
 toc
 disp('Maximum absolute error:')
 max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
