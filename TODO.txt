@@ -1,4 +1,3 @@
-Compare with ode113 in the demo
 OutputFcn behaves differently from that of ode45 
 add support for string functions with feval/varargin{:}
 create custom deval() which extends built-in version

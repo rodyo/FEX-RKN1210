@@ -3,7 +3,7 @@
 % Run this function for a small demonstration of the Runge-Kutta-Nystrom
 % 12th/10th order integrator for second-order ODE's. 
 %
-% See also RKN1210, RKN86, ODE45, ODESET, ODEGET. 
+% See also RKN1210, RKN86, ODE86, ODE113, DEVAL, ODESET, ODEGET. 
 function rkn1210_DEMO
 
 % Please report bugs and inquiries to: 
