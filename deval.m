@@ -45,10 +45,13 @@ function [Sxint,Spxint] = deval(sol,xint,idx)
 % If you find this work useful, please consider a donation:
 % https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N
     
+
+% FIXME: use interpolating polynomials rather than recursion
+
     persistent deval_original
     if isempty(deval_original)
         prevPath = pwd;
-        cd([matlabroot filesep 'toolbox' filesep 'matlab' filesep 'funfun']);
+        cd(fullfile(matlabroot, 'toolbox', 'matlab','funfun'));
         deval_original = @deval;
         cd(prevPath);
     end
