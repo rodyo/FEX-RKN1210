@@ -1,7 +1,6 @@
 OutputFcn behaves differently from that of ode45 
 add support for string functions with feval/varargin{:}
 create custom deval() which extends built-in version
-Strategy for dense output should be different; first, large steps should be made, which are then used as stepping stones to start new integrations from; this improves accuracy.
-Check throw - rethrow logic
-
+Strategy for dense output should be different; use the interpolating polynomials 
+implement custom odextend()
 

@@ -1,12 +1,19 @@
 % Changelog: 
 
+2015/May/27 (Rody Oldenhuis)
+- CHANGED: refarctored all code for better readability
+- FIXED: ALL output functions' halt are now used in the decision to terminate 
+         (instead of just the last one)
+
+
 2014/June/25 (Rody Oldenhuis)
 - CHANGED: max(abs(.)) -> norm(.,'inf') for performance reasons. 
 - FIXED  : The power used in stepsize control should be based on the method's 
            lower embedded order, PLUS 1 (not 2). So 11, not 14. 
 
 2014/June/05 (Rody Oldenhuis)
-- CHANGED: step adjustment now also considers RelTol (which might be more stringent            than AbsTol)
+- CHANGED: step adjustment now also considers RelTol (which might be more stringent            
+           than AbsTol)
 - FIXED: minor adjustments to allow for settings like AbsTol = inf
 
 
