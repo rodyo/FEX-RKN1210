@@ -171,6 +171,7 @@ Rody Oldenhuis   (oldenhuis@gmail.com)
 %}
 
 
+%{
 % Based on the code for ODE86 and RKN86, also available on the MATLAB
 % FileExchange.
 %
@@ -182,6 +183,7 @@ Rody Oldenhuis   (oldenhuis@gmail.com)
 % Coefficients obtained from
 % http://www.tampa.phys.ucl.ac.uk/rmat/test/rknint.f
 % These are also available in any format on request to these authors.
+%}
 
 
 % ELEMENTARY EXAMPLE
@@ -230,8 +232,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         [c, A, B,Bp, Bhat,Bphat] = getCoefficients(); end
     
     % Check user input    
-    argc = nargin;   errid = mfilename;
-    argo = nargout;  check_inputs(argc);
+    argo = nargout;
+    check_inputs(funfcn, tspan, y0, yp0, options, varargin{:});
 
     % initialize all variables
           exitflag = 0;                          pow = 1/11;
@@ -241,7 +243,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
               yout = y0(:).';                  dyout = yp0(:).';
               hmin = abs(tfinal-t)/1e12;           f = y0(:)*zeros(1,17);
        have_events = false;                     halt = false;
-    have_outputFcn = false;           produce_output = (argo ~= 0);
+    have_outputFcn = false;           produce_output = (nargout ~= 0);
              index = 1;                           yp = y0;
                dyp = yp0;
 
@@ -259,13 +261,13 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         f(:,1) = funfcn(t, y);        
     catch ME
         ME2 = MException(...
-            [errid ':incorrect_funfcnoutput'], ...
+            [mfilename ':incorrect_funfcnoutput'], ...
             'Derivative function should return a %d-element column vector.', numel(y0));
         throw(addCause(ME2,ME));
     end
 
     % parse options
-    if (argc < 5)
+    if (nargin < 5)
         options = odeset; end                                % initial options structure
 
     Stats       = odeget(options, 'Stats', 'off');           % display statistics at the end?
@@ -297,10 +299,10 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         % Check if all are indeed function handles
         for ii = 1:num_events
             if isempty(Event{ii}) || ~isa(Event{ii}, 'function_handle')
-                error([errid ':event_not_function_handles'],...
+                error([mfilename ':event_not_function_handles'],...
                     ['Unsupported class for event function received; event %d is of class ''%s''.\n',...
                     '%s only supports function handles.'], ...
-                    ii, class(Event{ii}), upper(errid));
+                    ii, class(Event{ii}), upper(mfilename));
             end
         end
 
@@ -313,7 +315,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                 previous_event_values(k) = Event{k}(t, y, dy);
 
             catch ME
-                ME2 = MException([errid ':eventFcn_dont_evaluate'],...
+                ME2 = MException(...
+                    [mfilename ':eventFcn_dont_evaluate'],...
                     'Event function #%1d failed to evaluate on initial call.', k);
                 throw(addCause(ME2,ME));
 
@@ -338,10 +341,10 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         % Check if all are indeed function handles
         for ii = 1:num_outputFcn
             if isempty(OutputFcn{ii}) || ~isa(OutputFcn{ii}, 'function_handle')
-                error([errid ':output_not_function_handles'],...
+                error([mfilename ':output_not_function_handles'],...
                     ['Unsupported class for output function received; output function %d is of class ''%s''.\n',...
                     '%s only supports function handles.'],...
-                    ii, class(OutputFcn{ii}), upper(errid));
+                    ii, class(OutputFcn{ii}), upper(mfilename));
             end
         end
 
@@ -358,7 +361,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
             catch ME
                 ME2 = MException(...
-                    [errid ':OutputFcn_doesnt_evaluate'],...
+                    [mfilename ':OutputFcn_doesnt_evaluate'],...
                     'Output function #%d failed to evaluate on initial call.', k);
                 throw(addCause(ME2,ME));
 
@@ -377,34 +380,6 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         
     %% Helper functions
 
-    % Check user inputs
-    function check_inputs(argc)
-
-        assert(argc >= 4 && argc <= 5,...
-            '%s requires either 4 or 5 input arguments.', upper(errid));
-        assert( isa(funfcn, 'function_handle'),...
-            [errid ':funfcn_isnt_a_function'], ...
-            'Second derivative f(t,y) must be given as function handle.');
-        assert( ~isempty(tspan) && numel(tspan) >= 2,...
-            [errid ':tspan_empty'],...
-            'Time interval [tspan] must contain at least 2 values.');
-        assert( all(diff(tspan) ~= 0),...
-            [errid ':tspan_dont_span'],...
-            'Values in [tspan] must all span a non-zero interval.');
-        assert( all(diff(tspan) > 0) || all(diff(tspan) < 0), ...
-            [errid ':tspan_must_increase'],...
-            'The entries in tspan must be monotonically increasing or decreasing.');
-        assert( numel(y0) == numel(yp0),...
-            [errid ':initial_values_disagree'], ...
-            'Initial values [y0] and [yp0] must contain the same number of elements.');
-        if argc == 5
-            assert( isstruct(options),...
-                [errid ':options_not_struct'], ...
-                'Options must be given as a structure created with ODESET().');
-        end
-        
-    end
-    
     % Dense output
     % FIXME: use deval (interpolating polynomials rather than recursion)
     function rkn1210_dense_output()
@@ -459,7 +434,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                         
                     catch ME
                         ME2 = MException(...
-                            [errid ':OutputFcn_failure_integration'],...
+                            [mfilename ':OutputFcn_failure_integration'],...
                             'Output function #%1d failed to evaluate during integration.', fk);
                         throw(addCause(ME2, ME));
                     end
@@ -487,8 +462,9 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
     % Nominal use case: sparse output
     function rkn1210_sparse_output()
 
-        % Initialize all variables    
-        grow_arrays();
+        % Initialize all variables            
+        if produce_output
+            [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output); end
 
         % Initial step
         if isempty(initialstep)
@@ -526,7 +502,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             if any(~isfinite(f(:)))
                 exitflag = -2;
                 % use warning (not error) to preserve output thus far
-                warning([errid ':nonfinite_values'],...
+                warning([mfilename ':nonfinite_values'],...
                      ['INF or NAN value encountered during the integration.\n',...
                       'Terminating integration...']);
                 finalize();
@@ -552,15 +528,16 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                 yp  = y;     y = new_y;
                 dyp = dy;   dy = new_dy;   index = index + 1;
                 
-                % if new values won't fit, first grow the arrays
-                % NOTE: This construction is WAY better than growing the arrays on
-                % EACH iteration; especially for "cheap" integrands, this
-                % construction causes a lot less overhead.
-                if index > size(yout,1)
-                    grow_arrays(); end
-
-                % insert updated values
-                if produce_output
+                if produce_output 
+                    
+                    % if new values won't fit, first grow the arrays
+                    % NOTE: This construction is WAY better than growing the arrays on
+                    % EACH iteration; especially for "cheap" integrands, this
+                    % construction causes a lot less overhead.                    
+                    if index > size(yout,1)                    
+                        [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output); end
+            
+                    % insert updated values                
                     tout (index,:) = t;
                     yout (index,:) = y.';
                     dyout(index,:) = dy.';
@@ -569,6 +546,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                     output.h     (index-1) = h;
                     output.delta (index-1) = delta;
                     output.accepted = output.accepted + 1;
+                    
                 end
 
                 % evaluate event-funtions
@@ -600,11 +578,11 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                                     % discontinuous event-functions from resulting in
                                     % unintelligible error messages
                                     try
-                                        detect_Events(fk, tp, previous_event_values(fk), t, value);
+                                        detect_Events(fk, h, tp,previous_event_values(fk), t,value);
 
                                     catch ME
                                         ME2 = MException(...
-                                            [errid ':eventFcn_failure_zero'],...
+                                            [mfilename ':eventFcn_failure_zero'],...
                                             'Failed to locate a zero for event function #%1d.', fk);
                                         throw(addCause(ME2,ME));
 
@@ -617,7 +595,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
                         catch ME
                             ME2 = MException(...
-                                [errid ':eventFcn_failure_integration'],...
+                                [mfilename ':eventFcn_failure_integration'],...
                                 'Event function #%1d failed to evaluate during integration.', fk);
                             throw(addCause(ME2,ME));
 
@@ -640,14 +618,14 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                         try
                             % TODO: behavior inconsistent with that of ODE suite
                             halt = halt | OutputFcn{fk}(...
-                                t + c*h, ...
+                                t, ...
                                 y (OutputSel), ...
                                 dy(OutputSel), ...
                                 []);
 
                         catch ME
                             ME2 = MException(...
-                                [errid ':OutputFcn_failure_integration'],...
+                                [mfilename ':OutputFcn_failure_integration'],...
                                 'Output function #%1d failed to evaluate during integration.', k);
                             throw(addCause(ME2,ME));
 
@@ -687,7 +665,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             if (abs(h) < hmin)
                 exitflag = -1;
                 % use warning to preserve results thus far
-                warning([errid ':stepsize_too_small'], ...
+                warning([mfilename ':stepsize_too_small'], ...
                     ['Failure at time t = %6.6e: \n',...
                     'Step size fell below the minimum acceptible value of %6.6d.\n',...
                     'A singularity is likely.'], t, hmin);
@@ -724,7 +702,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
                 catch ME
                     ME2 = MException(...
-                        [errid ':OutputFcn_failure_finalization'],...
+                        [mfilename ':OutputFcn_failure_finalization'],...
                         'Output function #%1d failed to evaluate during final call.', fk);
                     throw(addCause(ME2,ME));
 
@@ -807,7 +785,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
     % Detect events
     % use false-position method (derivative-free)
-    function detect_Events(which_event, ta, fa, tb, fb)
+    function detect_Events(which_event, current_h, ta,fa, tb,fb)
 
         % initializ
         y0   = yp;     opts          = options;
@@ -820,7 +798,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             'Event'      , [],...
             'OutputFcn'  , [],...
             'Stats'      , 'off',...
-            'InitialStep', h);
+            'InitialStep', current_h);
 
         % start root finding process
         while (min(abs(fa),abs(fb)) > abstol)
@@ -875,7 +853,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
             % check no. of iterations
             if (iterations > maxiterations)
-                error([errid ':rootfinder_exceeded_max_iterations'],...
+                error([mfilename ':rootfinder_exceeded_max_iterations'],...
                     'Root could not be located within %d iterations.', maxiterations);
             end
 
@@ -895,8 +873,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             % down, and insert the zero in its place:
 
             index = index + 1;
-            if index > size(yout,1)
-                grow_arrays(); end
+            if produce_output && index > size(yout,1)
+                [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output); end
 
             yout (index,:) = yout (index-1,:);     yout (index-1,:) = y0.';
             dyout(index,:) = dyout(index-1,:);     dyout(index-1,:) = dy0.';
@@ -907,31 +885,61 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
     end % find zeros of Event-functions
 
-    % Grow arrays
-    function grow_arrays
-        if produce_output
-
-            K      = 1.2;
-
-            growth = ceil((K-1)*numel(tout));
-            nans   = NaN(growth,1);
-            nans_y = NaN(growth,numel(y0));
-
-            tout  = [tout;  nans];
-            yout  = [yout;  nans_y];
-            dyout = [dyout; nans_y];
-
-            output.delta  = [output.delta;  nans  ];
-            output.h      = [output.h;      nans  ];
-            output.d2ydt2 = [output.d2ydt2; nans_y];
-
-        end
-    end
+    
 
 end % RKN1210 integrator
 
 
-% Load the coeffriencts
+% Check user inputs
+function check_inputs(funfcn, tspan, y0, yp0, options, varargin) %#ok<VANUS>
+
+    assert(nargin >= 4 && nargin <= 5,...
+        '%s requires either 4 or 5 input arguments.', upper(mfilename));
+    assert( isa(funfcn, 'function_handle'),...
+        [mfilename ':funfcn_isnt_a_function'], ...
+        'Second derivative f(t,y) must be given as function handle.');
+    assert( ~isempty(tspan) && numel(tspan) >= 2,...
+        [mfilename ':tspan_empty'],...
+        'Time interval [tspan] must contain at least 2 values.');
+    assert( all(diff(tspan) ~= 0),...
+        [mfilename ':tspan_dont_span'],...
+        'Values in [tspan] must all span a non-zero interval.');
+    assert( all(diff(tspan) > 0) || all(diff(tspan) < 0), ...
+        [mfilename ':tspan_must_increase'],...
+        'The entries in tspan must be monotonically increasing or decreasing.');
+    assert( numel(y0) == numel(yp0),...
+        [mfilename ':initial_values_disagree'], ...
+        'Initial values [y0] and [yp0] must contain the same number of elements.');
+    if nargin == 5
+        assert( isstruct(options),...
+            [mfilename ':options_not_struct'], ...
+            'Options must be given as a structure created with ODESET().');
+    end
+
+end
+
+% Efficiently grow arrays 
+function [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output)
+        
+    K      = 1.2;
+
+    growth = ceil((K-1)*numel(tout));
+    nans   = NaN(growth,1);
+    nans_y = NaN(growth,size(yout,2));
+
+    tout  = [tout;  nans];
+    yout  = [yout;  nans_y];
+    dyout = [dyout; nans_y];
+
+    output.delta  = [output.delta;  nans  ];
+    output.h      = [output.h;      nans  ];
+    output.d2ydt2 = [output.d2ydt2; nans_y];
+
+end
+
+
+
+% Load the coefficients 
 function [c, A, B,Bp, Bhat,Bphat] = getCoefficients()
     
     % c
@@ -1187,3 +1195,5 @@ function [c, A, B,Bp, Bhat,Bphat] = getCoefficients()
             2.0e-2
             0.0e0];
 end
+
+

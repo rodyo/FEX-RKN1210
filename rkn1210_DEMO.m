@@ -37,11 +37,12 @@ function rkn1210_DEMO
 
     % show message
     uiwait(msgbox({
-        'The class of Runge-Kutta-Nystrom (RKN) integrators are very efficient for ODE''s of the type'
+        ['The class of Runge-Kutta-Nystrom (RKN) integrators are very efficient for second-order ',...
+        'ODE''s of the form ']
         ''
         '        y'''' = F(t,y)'
         ''
-        'i.e., where the first derivative of the function [y] does not explicitly appear in the ODE.'
+        'i.e., where the first derivative y'' of the function y(t) does not explicitly appear in the ODE.'
         ''
         ['One example of a problem of this type is a body in freefall, in an ',...
         'environment without air drag or any other resistence; a body in orbit, for example.'];
@@ -51,7 +52,7 @@ function rkn1210_DEMO
         'First demonstration','modal'));
 
     % start integration
-    options = odeset('abstol', 5e-16, 'reltol', 5e-16);
+    options = odeset('abstol', 1e-16);
     [t, y, dummy,dummy, output] = rkn1210(f, [0, 50*pi], [1; 0], [0; 1],options);%#ok
 
     % show results
@@ -61,7 +62,7 @@ function rkn1210_DEMO
     set(1, 'position', position(800, 600));
     subplot(2,2,1)
     plot(y(:,1), y(:,2), '.k', 'markersize', 1);
-    title('Integrated circular orbit'), xlabel('X'), ylabel('Y')
+    title('Normalized circular orbit'), xlabel('X'), ylabel('Y')
     axis equal, axis tight
     
     % We can easily plot the x- and y-error
@@ -81,26 +82,27 @@ function rkn1210_DEMO
     axis tight
     
     subplot(2,2,4), hold on
-    plot(output.delta, 'r')
-    title('Error estimate') 
+    plot(cumsum(output.delta), 'r')
+    title('Estimated accumulated error') 
     xlabel('step'), ylabel('magnitude')
     axis tight
-
-    %% Elliptic orbit
     
-    % show message
+    % show exit message
     pause(1)
-    uiwait(msgbox({[
-        'Note how the error remains below 1.5e-13, and how the step size ',...
-        'starts conservatively but automatically adapts itself to the largest possible value that ',...
-        'still gives the desired accuracy.']
+    uiwait(msgbox({
+        ['Observe that the error remains well below 1e-13, does not increase over time, and is ',...
+        'reasonably well approximated by the error estimator embedded in the algorithm. Also ',...
+        'notice how the step size starts conservatively, but gradually increases and automatically ',...
+        'adapts itself to the largest possible value that still gives the desired accuracy.']
         ''
         'That''s pretty good, but of course it''s an exceedingly simple example.';
         ' '
         [' Now let''s try a more realistic example; a 200×10000 km elliptical ',...
         'orbit around the Earth, including the Earth''s oblateness around the equator, for 5 ',...
         'revolutions:']}, ...
-        'Second demonstration','modal')); 
+        'Second demonstration', 'modal')); 
+    
+    %% Elliptic orbit
     
     % define differential equation
     muE = 398600.4418;
@@ -154,22 +156,25 @@ function rkn1210_DEMO
     xlabel('step #'), ylabel('magnitude [km]')
     axis tight
     
-    %% Using output functions
-    
-    % show message
+    % show exit message
     pause(1)
     uiwait(msgbox({[
         'Note how the accumulated roundoff error remains very small for this more ',...
         'complicated case. Also note how the integrator automatically decreases its stepsize each ',...
         'time the satellite approaches the Earth more closely. This is because its speed increases ',...
         'at those points, so that the error will accumulate more rapidly if large stepsizes are ',...
-        'maintained. These are also the regions where the ODE45 integrator often fails to produce ',...
-        'the correct trajectory.']
+        'maintained. These are also the regions where the ODE45 or ODE113 integrators often fail to ',...
+        'produce the correct trajectory.']
         ' '
         ['This RKN1210-function also supports ''output functions'', functions that are called ',...
         'after each successful integration step. This can be used to produce a progress bar, for example:']},...
         'Third demonstration','modal'));
-                
+    
+    %% Using output functions
+          
+    % Close previous figure
+    close(1);
+    
     % initialize waitbar
     wait = waitbar(0, 'integrating circular orbit...');
 
@@ -184,10 +189,8 @@ function rkn1210_DEMO
         % don't stop
         stop = false;
         % only after sucessfull steps
-        if ~isempty(flag), return
-        else
-            wait = waitbar(t/50/pi, wait);
-        end
+        if isempty(flag)        
+            wait = waitbar(t/50/pi, wait); end
     end
     
     % Plot the circular orbit
@@ -208,7 +211,7 @@ function rkn1210_DEMO
         ['As a final example, we will use an output function ',...
         'to display the instantaneous integration step, and an event function that detects when the ',...
         'Y-coordinate becomes negative. When this happens, the integration is terminated:']}, ...
-        'Fourth demonstration','modal'));
+        'Fourth demonstration', 'modal'));
     
     % initialize figure
     figure(1), clf, hold on
@@ -226,10 +229,10 @@ function rkn1210_DEMO
         % don't stop
         stop = false;
         % only after sucessfull steps
-        if ~isempty(flag), return
-        else
+        if isempty(flag)       
             plot(y(1), y(2), 'b.')
-            axis equal, axis([-1.2 1.2 -.2 1.2])            
+            axis equal, axis([-1.2 1.2 -.2 1.2])  
+            title(sprintf('Plot generated by output function; time is %f', t))
             pause(0.1), drawnow % flush plotting commands
         end
     end
@@ -244,12 +247,12 @@ function rkn1210_DEMO
         value = y(2);
     end
       
-    %% thanks & enjoy
+    %% Thanks & enjoy
     
     pause(1)
-    uiwait(msgbox(['That''s about it. Please look inside this Demo to learn how to use these features.',...
+    uiwait(msgbox(['That''s about it. Please look inside this Demo to learn how to use these features. ',...
     'Please send any bugs you find to oldenhuis@gmail.com'],...
-    'That''s all Folks!','modal'));
+    'That''s all Folks!', 'modal'));
     close(1)
     
     set(0, 'defaulttextinterpreter', oldInterpreter);
