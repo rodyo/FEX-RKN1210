@@ -1,8 +1,8 @@
 function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
-% RKN1210       12th/10th order Runge-Kutta-Nystrom integrator
+% RKN1210       12th/10th order Runge-Kutta-Nyström integrator
 %
-% RKN1210() is a 12th/10th order numerical integrator for ordinary
-% differential equations of the special form
+% RKN1210() is a 12th/10th order numerical integrator for second-order 
+% ordinary differential equations of the form
 %
 %   y'' = f(t, y)                     (1)
 %
@@ -11,20 +11,21 @@ function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, option
 %   y (t0) = y0                       (2)
 %   y'(t0) = yp0
 %
-% This second-order differential equation is integrated with a
-% Runge-Kutta-Nystrom method, with 17 function evaluations per step. The
-% RKN-class of integrators is especially suited for this purpose, since
-% compared to a classic Runge-Kutta integration scheme the same accuracy
-% can be obtained with less function evaluations.
+% This second-order ODE is integrated with a Runge-Kutta-Nyström method, 
+% with 17 function evaluations per step. The RKN-class of integrators is 
+% especially suited for this purpose, since compared to a classic 
+% Runge-Kutta integration scheme, the same accuracy can be obtained with 
+% about half the number of function evaluations.
 %
 % This RKN12(10) method is a very high-order method, to be used in problems
 % with *extremely* stringent error tolerances. As the name implies, the
 % error should be less than O(h^13). In verious studies, it has been shown
 % that this particular integration technique is overall more efficient for
-% ODE's of the form (1) than multi-step or extrapolation methods that give
-% the same accuracy.
+% ODE's of the form (1) than multi-step or even extrapolation methods
+% capable of the same accuracy.
 %
-% RKN1210()'s behavior is very similar MATLAB's ODE-integrator suite:
+% RKN1210()'s interface is very similar to that of MATLAB's ODE-integrator 
+% suite:
 %
 % USAGE:
 % ----------------
@@ -57,9 +58,9 @@ function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, option
 %            of elements.
 %
 %  options - options structure, created with ODESET(). Used options are
-%            MaxStep, InitialStep, AbsTol, Stats, Event, OutputFcn,
-%            OutputSel, and Refine. See the help for ODESET() for more
-%            information.
+%            NormControl, MaxStep, InitialStep, AbsTol, Stats, Event, 
+%            OutputFcn, OutputSel, and Refine. See the help for ODESET() 
+%            for more information.
 %
 % How to use Event and/or Output functions is described in the documentation
 % on ODESET(). There is one difference: RKN1210() now also passes the first
@@ -111,14 +112,14 @@ function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, option
 %    output - structure containing additional information about the
 %             integration. It has the fields:
 %
-%             output.h              step size (sucesful steps only) at
-%                                   each time [tn]
-%             output.rejected       amount of rejected steps
-%             output.accepted       amount of accepted steps
-%             output.delta          estimate of the largest possible
-%                                   error at each time [tn]
-%             output.message        Short message describing the
-%                                   termination conditions
+%             output.stepsize         step size (sucesful steps only) at
+%                                     each time [tn]
+%             output.estimated_error  estimate of the largest possible
+%                                     error at each time [tn]
+%             output.rejected         number of rejected steps
+%             output.accepted         number of accepted steps
+%             output.message          Short message describing the
+%                                     termination conditions
 %
 %             Note that these fields contain the information of ALL
 %             steps taken, even for cases where [tspan] contains
@@ -149,40 +150,74 @@ function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, option
 %                          specified in the Events option. The values indicate
 %                          which event the solver detected.
 %
-% See also ODE45, ODE86, RKN86.
-
-
-% Please report bugs and inquiries to:
+% If you find this work useful and want to show your appreciation, please
+% consider <a
+% href="matlab:web('https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N')">making a donation</a>.
 %
-% Name       : Rody P.S. Oldenhuis
-% E-mail     : oldenhuis@gmail.com    (personal)
-%              oldenhuis@luxspace.lu  (professional)
-% Affiliation: LuxSpace sàrl
-% Licence    : BSD
+% See also ODE45, ODE113, ODE86, RKN86, ODEGBS, ODESET, DEVAL, ODEXTEND.
 
 
-% If you find this work useful and want to show your appreciation:
-% https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N
-
-
-% Authors
+% Licence information 
 %{
-Rody Oldenhuis   (oldenhuis@gmail.com)
+Copyright (c) 2015, Rody Oldenhuis
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those
+of the authors and should not be interpreted as representing official policies,
+either expressed or implied, of the FreeBSD Project.
 %}
 
 
+% Author
 %{
-% Based on the code for ODE86 and RKN86, also available on the MATLAB
-% FileExchange.
-%
-% The construction of RKN12(10) is described in
-% High-Order Embedded Runge-Kutta-Nystrom Formulae
-% J. R. DORMAND, M. E. A. EL-MIKKAWY, AND P. J. PRINCE
-% IMA Journal of Numerical Analysis (1987) 7, 423-430
-%
-% Coefficients obtained from
-% http://www.tampa.phys.ucl.ac.uk/rmat/test/rknint.f
-% These are also available in any format on request to these authors.
+Name       : Rody P.S. Oldenhuis
+E-mail     : oldenhuis@gmail.com    (personal)
+             oldenhuis@luxspace.lu  (professional)
+Affiliation: LuxSpace sàrl
+%}
+
+
+% References
+%{
+Based on the code for ODE86 and RKN86, also available on the MATLAB
+FileExchange.
+
+The consruction of RKN12(10) is described in
+High-Order Embedded Runge-Kutta-Nystrom Formulae
+J. R. DORMAND, M. E. A. EL-MIKKAWY, AND P. J. PRINCE
+IMA Journal of Numerical Analysis (1987) 7, 423-430
+
+Coefficients obtained from
+http://www.tampa.phys.ucl.ac.uk/rmat/test/rknint.f
+These are also available in any format on request to these authors.
+%}
+
+
+% How to cite this work
+%{
+Rody Oldenhuis, "MATLAB implementation of an embedded 12/10th order Runge-Kutta-Nyström 
+integrator for ordinary differential equations", May 2015. Permanent link: 
+http://www.mathworks.com/matlabcentral/fileexchange/25291.
 %}
 
 
@@ -219,6 +254,7 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 %}
 
 
+
 % If you find this work useful and want to show your appreciation:
 % https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N
 
@@ -248,10 +284,10 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                dyp = yp0;
 
     % initialize output-structure
-           output.h = [];               output.fevals = 1; % (see below)
+    output.stepsize = [];               output.fevals = 1; % (see below)
     output.rejected = 0;              output.accepted = 0;
-       output.delta = [];             output.message  = 'Integration not started.';
-      output.d2ydt2 = [];
+      output.d2ydt2 = [];             output.message  = 'Integration not started.';
+                               output.estimated_error = [];
 
     % times might be given in reverse
     direction = 1 - 2*(numel(tspan)==2 && tfinal<t0);
@@ -268,22 +304,40 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
     % parse options
     if (nargin < 5)
-        options = odeset; end                                % initial options structure
+        options = odeset; end                           % initial options structure
 
-    Stats       = odeget(options, 'Stats', 'off');           % display statistics at the end?
-    abstol      = odeget(options, 'AbsTol', 1e-14);          % Absolute tolerance
-    reltol      = odeget(options, 'RelTol', 1e-7);           % Relative tolerance
-    hmax        = odeget(options, 'MaxStep', abs(tfinal-t)); % defaults to entire interval
-    initialstep = odeget(options, 'InitialStep');            % default determined later
-    Event       = odeget(options, 'Event', []);              % defaults to no eventfunctions
-    OutputFcn   = odeget(options, 'OutputFcn', []);          % defaults to no output functions
+    Stats       = odeget(options, 'Stats', 'off');      % display statistics at the end?
+    abstol      = odeget(options, 'AbsTol', 1e-14);     % Absolute tolerance
+    reltol      = odeget(options, 'RelTol', 1e-7);      % Relative tolerance
+    hmax        = odeget(options, 'MaxStep', tfinal-t); % defaults to entire interval
+    initialstep = odeget(options, 'InitialStep');       % default determined later
+    Event       = odeget(options, 'Event', []);         % defaults to no eventfunctions
+    OutputFcn   = odeget(options, 'OutputFcn', []);     % defaults to no output functions
+    NormControl = odeget(options, 'NormControl', 'off');% use norm of solution rather than 
+                                                        % component wise error
 
-
-    % FUTURE WORK
-    NormControl = odeget(options, 'NormControl', 'off');  %#ok<NASGU> relax error control
-    MassMatrix  = odeget(options, 'Mass', []);            %#ok<NASGU> Mass matrix, for problems of the ...
-                                                          %           form M(t,y)*y'' = F(t,y)
-
+    % FUTURE WORK    
+    MassMatrix  = odeget(options, 'Mass', []); %#ok<NASGU> Mass matrix, for problems of the 
+                                               %           form M(t,y)*y'' = F(t,y)
+                                           
+    % Some obvious truths
+    abstol = abs(abstol);
+    reltol = abs(reltol);
+    if ~isempty(initialstep) && direction*initialstep < 0
+        warning([mfilename ':initialstep_wrong_direction'],...
+            ['The sign of the initial step disagrees with the integration ',...
+            'direction implied by argument tspan; setting the sign of the ',...
+            'initial step equal to the implied direction ']);
+        initialstep = direction * abs(initialstep);
+    end
+    if direction*hmax < 0
+        warning([mfilename ':maxstep_wrong_direction'],...
+            ['The sign of the maximum step disagrees with the integration ',...
+            'direction implied by the argument tspan; setting the sign of the ',...
+            'maximum step equal to the implied direction ']);
+        hmax = sign(initialstep)* abs(hmax);
+    end
+    
                                                           
     % in case of Event/output functions, define a few extra parameters
     if ~isempty(Event)
@@ -369,7 +423,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
         end
     end
     
-    %% Perform integration 
+    
+    %% Perform integration
 
     % Use dense output routines if [tspan] has more than two elements
     if (numel(tspan) > 2)
@@ -377,7 +432,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
     else 
         rkn1210_sparse_output();
     end
-        
+    
+    
     %% Helper functions
 
     % Dense output
@@ -405,24 +461,22 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             
             % new initial step is old next-to-last step
             options = odeset(options, ...
-                'InitialStep', outputI.h(max(1,end-1)));
+                'InitialStep', outputI.stepsize(max(1,end-1)));
             
-            % append the solutions
+            % Append the solutions
             yout  = [yout;   youtI(end, :)]; %#ok
             dyout = [dyout; dyoutI(end, :)]; %#ok
             if have_events
-                TE   = [TE; TEI];  %#ok
-                YEI  = [YE; YEI];  %#ok
-                DYEI = [YPE; DYEI];%#ok
-                IEI  = [IE; IEI];  %#ok
+                TE  = [TE; TEI];   IEI  = [ IE;  IEI]; %#ok
+                YEI = [YE; YEI];   DYEI = [YPE; DYEI]; %#ok
             end
             
             % process the output
-            output.h        = [output.h; outputI.h];
-            output.fevals   = output.fevals + outputI.fevals;
-            output.rejected = output.rejected + outputI.rejected;
-            output.accepted = output.accepted + outputI.accepted;
-            output.delta    = [output.delta; outputI.delta];
+            output.stepsize        = [output.stepsize; outputI.stepsize];
+            output.fevals          = output.fevals + outputI.fevals;
+            output.rejected        = output.rejected + outputI.rejected;
+            output.accepted        = output.accepted + outputI.accepted;
+            output.estimated_error = [output.estimated_error; outputI.estimated_error];
             
             % evaluate any output functions at each [t] in [tspan]
             if have_outputFcn
@@ -509,19 +563,40 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                 return;
             end % non-finite values
 
-            % pre-compute the sums of the products with the coefficients
-            fBphat = f*Bphat;   fBhat  = f*Bhat;
-
-            % Estimate the error and the acceptable error
-            delta1 = norm(h2*(fBhat  - f*B ), 'inf'); % error ~ |Y - y|
-            delta2 = norm(h *(fBphat - f*Bp), 'inf'); % error ~ |dot{Y} - dot{y}|
-            delta  = max(delta1, delta2);             % worst case error
-
-            % update the solution only if the error is acceptable
-            new_y  =  y + h*dy + h2*fBhat;
-            new_dy = dy + h*fBphat;
-            if (delta <= abstol) && ...
-               (delta <= reltol*max(norm(new_y),norm(new_dy)))
+            % Pre-compute solutions
+            fBhat  = f*Bhat;     new_y  =  y + h*dy + h2*fBhat;
+            fBphat = f*Bphat;    new_dy = dy + h*fBphat;  
+            
+            % Update the solution only if the error is acceptable
+            if strcmpi(NormControl, 'on') 
+                
+                % Estimate the error using norm of solution 
+                delta1 = norm(h2*(fBhat  - f*B )); % error ~ ||Y - y||
+                delta2 = norm(h *(fBphat - f*Bp)); % error ~ ||dot{Y} - dot{y}||
+                delta  = max(delta1, delta2);      % always use worst case error...
+                
+                % ...and compare agains most stringent demand
+                step_accepted = delta <= min(...
+                    abstol, ...
+                    reltol * max(norm(new_y), norm(new_dy)) );
+            else
+                
+                % Per-component error estimation (usually more stringent) 
+                delta1 = abs(h2*(fBhat  - f*B )); % error ~ |Y - y|
+                delta2 = abs(h *(fBphat - f*Bp)); % error ~ |dot{Y} - dot{y}|
+                delta  = max(delta1, delta2);     % always use worst case error...
+                
+                % ...and compare agains most stringent demand
+                step_accepted = all(delta <= min(...
+                    abstol, ...
+                    reltol * max(abs(new_y), abs(new_dy)) ));
+                
+            end
+                        
+            % (used for stats and stepsize control)
+            delta = max(delta(:));
+            
+            if step_accepted
 
                 % update the new solution                
                 tp  = t;     t = t + h;
@@ -543,8 +618,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                     dyout(index,:) = dy.';
 
                     output.d2ydt2(index,:) = f(:,1).';
-                    output.h     (index-1) = h;
-                    output.delta (index-1) = delta;
+                    output.stepsize(index-1) = h;
+                    output.estimated_error(index-1) = max(delta(:));
                     output.accepted = output.accepted + 1;
                     
                 end
@@ -571,21 +646,33 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                                 % -1: detect only DEcreasing zeros
                                 if (zerodirection == 0) ||...
                                    (sign(value) == sign(zerodirection))
+                               
                                     % terminate?
                                     terminate = terminate || isterminal;
-                                    % detect the precise location of the zero
+                                    
+                                    % Detect the precise location of the zero
                                     % NOTE: try-catch is necessary to prevent things like
                                     % discontinuous event-functions from resulting in
                                     % unintelligible error messages
-                                    try
-                                        detect_Events(fk, h, tp,previous_event_values(fk), t,value);
+                                    if produce_output
+                                        try
+                                            [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
+                                                index, tout, yout,dyout, TE,YE,YPE,IE, output,...
+                                                funfcn, abstol,...
+                                                Event{fk}, fk,...
+                                                h,...
+                                                yp, dyp, ...
+                                                tp, previous_event_values(fk),...
+                                                t , value,...
+                                                options);
 
-                                    catch ME
-                                        ME2 = MException(...
-                                            [mfilename ':eventFcn_failure_zero'],...
-                                            'Failed to locate a zero for event function #%1d.', fk);
-                                        throw(addCause(ME2,ME));
+                                        catch ME
+                                            ME2 = MException(...
+                                                [mfilename ':eventFcn_failure_zero'],...
+                                                'Failed to locate a zero for event function #%1d.', fk);
+                                            throw(addCause(ME2,ME));
 
+                                        end
                                     end
                                 end
                             end
@@ -686,8 +773,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
             tout  = tout (1:index,:);
             yout  = yout (1:index,:);
             dyout = dyout(1:index,:);
-            output.h     = output.h(1:index-1);
-            output.delta = output.delta(1:index-1);
+            output.stepsize        = output.stepsize(1:index-1);
+            output.estimated_error = output.estimated_error(1:index-1);
         end
 
         % neutral flag means all OK
@@ -748,10 +835,8 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
                     'nfevals', output.fevals);
 
                 if have_events
-                    sol.xe  = TE;
-                    sol.ye  = YE;
-                    sol.ype = YPE;
-                    sol.ie  = IE;
+                    sol.xe  = TE;    sol.ie  = IE;
+                    sol.ye  = YE;    sol.ype = YPE;                    
                 end
 
                 % output argument 'tout' is an alias for 'sol' in this case:
@@ -783,110 +868,9 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
     end % finalize the integration
 
-    % Detect events
-    % use false-position method (derivative-free)
-    function detect_Events(which_event, current_h, ta,fa, tb,fb)
-
-        % initializ
-        y0   = yp;     opts          = options;
-        dy0  = dyp;    iterations    = 0;
-        tt   = ta;     maxiterations = 1e4;
-        side = 0;
-
-        % prune unnessesary options, and set initial step to current step
-        opts = odeset(opts,...
-            'Event'      , [],...
-            'OutputFcn'  , [],...
-            'Stats'      , 'off',...
-            'InitialStep', current_h);
-
-        % start root finding process
-        while (min(abs(fa),abs(fb)) > abstol)
-
-            % Regula-falsi step
-            iterations = iterations + 1;
-            ttp = tt;
-            tt  = (fb*ta - fa*tb) / (fb-fa);
-
-            % termination condition
-            if (ttp == tt || abs(ttp-tt) < eps)
-                break, end
-
-            % Evaluating the event-function at this new trial location is
-            % somewhat complicated. We need to recursively call this
-            % RKN1210-routine to get appropriate values for [y] and [dy] at
-            % the new time [tt] into the event function:
-            [DUMMY_, Zyout, Zdyout, DUMMY_, Zoutput] = ...
-                rkn1210(funfcn, [ttp, tt], y0, dy0, opts); %#ok<ASGLU>
-
-            % set new initial step to next-to-last step of previous call
-            opts = odeset(opts, 'InitialStep', Zoutput.h(max(1,end-1)));
-
-            % save old values for next iteration
-            y0  = Zyout (end,:).';
-            dy0 = Zdyout(end,:).';
-
-            % NOW evaluate event-function with these values
-            fval = Event{which_event}(tt, y0, dy0);
-
-            % keep track of number of function evaluations
-            if produce_output
-                output.fevals = output.fevals + Zoutput.fevals; end
-
-            % compute new step
-            if (fb*fval>0)
-                tb = tt; fb = fval;
-                if side == -1
-                    fa = fa/2; end
-                side = -1;
-
-            elseif (fa*fval>0)
-                ta = tt; fa = fval;
-                if side == +1
-                    fb = fb/2; end
-                side = +1;
-
-            else
-                % termination condition
-                break;
-            end
-
-            % check no. of iterations
-            if (iterations > maxiterations)
-                error([mfilename ':rootfinder_exceeded_max_iterations'],...
-                    'Root could not be located within %d iterations.', maxiterations);
-            end
-
-        end % Regula-falsi loop
-
-        % The zero has been found!
-        if produce_output
-
-            %  insert values into proper arrays
-            % TODO: (Rody Oldenhuis) Also grow these
-            TE  = [TE; tt];   YPE = [YPE; dy0];
-            YE  = [YE; y0];   IE  = [IE; which_event];
-
-            % The integrand first overshoots the zero; that's how it's
-            % detected. We want the zero to be in the final arrays, but we also
-            % want them in chronological order. So, move the overshoot one
-            % down, and insert the zero in its place:
-
-            index = index + 1;
-            if produce_output && index > size(yout,1)
-                [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output); end
-
-            yout (index,:) = yout (index-1,:);     yout (index-1,:) = y0.';
-            dyout(index,:) = dyout(index-1,:);     dyout(index-1,:) = dy0.';
-            tout (index,:) = tout (index-1,:);     tout (index-1,:) = tt;
-
-            output.h(index-1) = tt-tout(index-1);
-        end
-
-    end % find zeros of Event-functions
-
     
 
+    
 end % RKN1210 integrator
 
 
@@ -931,11 +915,126 @@ function [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output)
     yout  = [yout;  nans_y];
     dyout = [dyout; nans_y];
 
-    output.delta  = [output.delta;  nans  ];
-    output.h      = [output.h;      nans  ];
-    output.d2ydt2 = [output.d2ydt2; nans_y];
+    output.estimated_error = [output.estimated_error;    nans  ];
+    output.stepsize        = [output.stepsize; nans  ];
+    output.d2ydt2          = [output.d2ydt2;   nans_y];
 
 end
+
+
+% Detect events
+% use false-position method (derivative-free)
+function [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
+        index, tout, yout,dyout, TE,YE,YPE,IE, output, ...  %
+        funfcn, abstol,...
+        EventFcn, which_event,...      %
+        h, ...                         %
+        yp, dyp, ...                   %
+        ta, fa,...                     %
+        tb, fb,...                     %
+        options)                       %
+
+    % initialize
+    y0   = yp;     side          = 0;
+    dy0  = dyp;    iterations    = 0;
+    tt   = ta;     maxiterations = 1e4;
+
+    % prune unnessesary options, and set initial step to current step
+    opts = odeset(options,...
+        'Event'      , [],...
+        'OutputFcn'  , [],...
+        'Stats'      , 'off',...
+        'InitialStep', h);
+
+    % Start root finding process
+    while (min(abs(fa),abs(fb)) > abstol)
+
+        % Regula-falsi step
+        iterations = iterations + 1;
+        ttp = tt;
+        tt  = (fb*ta - fa*tb) / (fb-fa);
+
+        % termination condition
+        if (ttp == tt || abs(ttp-tt) < eps)
+            break, end
+
+        % Direction might have changed 
+        Zdirection = sign(tt-ttp);
+        opts = odeset(opts, ...
+            'InitialStep', Zdirection * abs(opts.InitialStep),...
+            'MaxStep'    , Zdirection * abs(opts.MaxStep));
+
+        % Evaluating the event-function at this new trial location is
+        % somewhat complicated. We need to recursively call this
+        % RKN1210-routine to get appropriate values for [y] and [dy] at
+        % the new time [tt] into the event function:
+        [DUMMY_, Zyout, Zdyout, DUMMY_, Zoutput] = ...
+            rkn1210(funfcn, [ttp tt], y0, dy0, opts); %#ok<ASGLU>
+
+        % set new initial step to next-to-last step of previous call            
+        opts = odeset(opts, ...
+            'InitialStep', Zoutput.stepsize(max(1,end-1)));
+
+        % save old values for next iteration
+        y0  = Zyout (end,:).';
+        dy0 = Zdyout(end,:).';
+
+        % NOW evaluate event-function with these values
+        fval = EventFcn(tt, y0, dy0);
+
+        % keep track of number of function evaluations
+        output.fevals = output.fevals + Zoutput.fevals; 
+
+        % compute new step
+        if (fb*fval>0)
+            tb = tt; fb = fval;
+            if side == -1
+                fa = fa/2; end
+            side = -1;
+
+        elseif (fa*fval>0)
+            ta = tt; fa = fval;
+            if side == +1
+                fb = fb/2; end
+            side = +1;
+
+        else
+            % termination condition
+            break;
+        end
+
+        % check no. of iterations
+        if (iterations > maxiterations)
+            error([mfilename ':rootfinder_exceeded_max_iterations'],...
+                'Root could not be located within %d iterations.', maxiterations);
+        end
+
+    end % Regula-falsi loop
+
+
+    % The zero has been found! insert values into proper arrays
+    % TODO: (Rody Oldenhuis) Also grow these
+    TE  = [TE; tt];   YPE = [YPE; dy0];
+    YE  = [YE; y0];   IE  = [IE; which_event];
+
+    % The integrand first overshoots the zero; that's how it's
+    % detected. We want the zero to be in the final arrays, but we also
+    % want them in the correct order. So, move the overshoot one down, 
+    % and insert the zero in its place:
+
+    index = index + 1;
+    if index > size(yout,1)
+        [tout, yout, dyout, output] = grow_arrays(...
+            tout, yout, dyout, output); 
+    end
+
+    yout (index,:) = yout (index-1,:);    yout (index-1,:) = y0.';
+    dyout(index,:) = dyout(index-1,:);    dyout(index-1,:) = dy0.';
+    tout (index,:) = tout (index-1,:);    tout (index-1,:) = tt;
+
+    output.stepsize(index-1) = tt-tout(index-1);
+
+end % find zeros of Event-functions
 
 
 

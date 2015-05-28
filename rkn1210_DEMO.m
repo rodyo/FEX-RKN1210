@@ -20,7 +20,7 @@ function rkn1210_DEMO
 % If you find this work useful and want to show your appreciation:
 % https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N
 
-    %% initialize
+    %% Initialize
     
     % optimize figure window sizes
     scz      = get(0, 'screensize');
@@ -53,7 +53,7 @@ function rkn1210_DEMO
 
     % start integration
     options = odeset('abstol', 1e-16);
-    [t, y, dummy,dummy, output] = rkn1210(f, [0, 50*pi], [1; 0], [0; 1],options);%#ok
+    [t, y, dummy_,dummy_, output] = rkn1210(f, 2*pi*[0 25], [1;0], [0;1], options);%#ok
 
     % show results
     
@@ -71,22 +71,22 @@ function rkn1210_DEMO
     Yerr = abs(y(:,2) - sin(t));
     plot(sqrt(Xerr.^2+Yerr.^2), 'r');
     title('Absolute error')
-    xlabel('step'), ylabel('error')
+    xlabel('step #'), ylabel('error')
     axis tight
     
     % Also plot the step magnitude and error estimate
     subplot(2,2,3), hold on
-    plot(output.h, 'b')    
+    plot(output.stepsize, 'b')    
     title('Step size [s]') 
-    xlabel('step'), ylabel('magnitude')
+    xlabel('step #'), ylabel('magnitude')
     axis tight
     
     subplot(2,2,4), hold on
-    plot(cumsum(output.delta), 'r')
+    plot(cumsum(output.estimated_error), 'r')
     title('Estimated accumulated error') 
-    xlabel('step'), ylabel('magnitude')
+    xlabel('step #'), ylabel('magnitude')
     axis tight
-    
+        
     % show exit message
     pause(1)
     uiwait(msgbox({
@@ -145,13 +145,13 @@ function rkn1210_DEMO
     
     % Also plot the step magnitude and error estimate
     subplot(2,2,2), hold on
-    plot(output.h, 'b')    
+    plot(output.stepsize, 'b')    
     title('Time step per iteration') 
     xlabel('step #'), ylabel('Step size [s]')
     axis tight
     
     subplot(2,2,4), hold on
-    plot(output.delta, 'r')
+    plot(output.estimated_error, 'r')
     title('Error estimate') 
     xlabel('step #'), ylabel('magnitude [km]')
     axis tight
@@ -179,11 +179,11 @@ function rkn1210_DEMO
     wait = waitbar(0, 'integrating circular orbit...');
 
     % start integration (circular orbit again)
-    options = odeset('abstol', 1e-16, 'outputfcn', @OutputFcn1);
-    [t, y, dummy,dummy, output] = rkn1210(f, [0, 50*pi], [1; 0], [0; 1],options);%#ok
-    % kill waitbar
-    close(wait)
-
+    options = odeset(...
+        'abstol'   , 1e-16,...
+        'outputfcn', @OutputFcn1);
+    [t, y, dummy,dummy, output] = rkn1210(f, 2*pi*[0, 25], [1;0], [0;1], options);%#ok
+    
     % the output function
     function stop = OutputFcn1(t,y,dy,flag)%#ok
         % don't stop
@@ -192,6 +192,9 @@ function rkn1210_DEMO
         if isempty(flag)        
             wait = waitbar(t/50/pi, wait); end
     end
+    
+    % kill waitbar
+    close(wait)
     
     % Plot the circular orbit
     figure(1), clf, hold on
@@ -217,8 +220,11 @@ function rkn1210_DEMO
     figure(1), clf, hold on
                 
     % start integration (circular orbit again)    
-    options = odeset('abstol', 1e-16, 'outputfcn', @OutputFcn2, 'events', @EventFcn);
-    [t, y, dy, TE,YE] = rkn1210(f, [0, 50*pi], [1; 0], [0; 1],options);%#ok
+    options = odeset(...
+        'abstol'   , 1e-16,...
+        'outputfcn', @OutputFcn2,...
+        'events'   , @EventFcn);
+    [t, y, dy, TE,YE] = rkn1210(f, 2*pi*[0, 25], [1;0], [0;1], options);%#ok
         
     % plot final point
     plot(YE(1), YE(2), 'rx')
