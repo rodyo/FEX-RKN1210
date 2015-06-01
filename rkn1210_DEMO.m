@@ -30,11 +30,10 @@ function rkn1210_DEMO
     set(0, 'defaulttextinterpreter', 'none')
     
     %% Elementary example: Circular orbit
-    
-    % define function
-    f = @(t,y) [-y(1) * (y(1)^2+y(2)^2)^(-3/2);
-                -y(2) * (y(1)^2+y(2)^2)^(-3/2)];
 
+    % define function
+    f = @(t,y) -y/norm(y)^3;
+    
     % show message
     uiwait(msgbox({
         ['The class of Runge-Kutta-Nystrom (RKN) integrators are very efficient for second-order ',...
@@ -52,8 +51,8 @@ function rkn1210_DEMO
         'First demonstration','modal'));
 
     % start integration
-    options = odeset('abstol', 1e-16);
-    [t, y, dummy_,dummy_, output] = rkn1210(f, 2*pi*[0 25], [1;0], [0;1], options);%#ok
+    options = odeset('abstol', 1e-15);    
+    [t,y, dummy_,dummy_, output] = rkn1210(f, 2*pi*[0 25], [1;0], [0;1], options);%#ok
 
     % show results
     
@@ -86,14 +85,15 @@ function rkn1210_DEMO
     title('Estimated accumulated error') 
     xlabel('step #'), ylabel('magnitude')
     axis tight
-        
+            
     % show exit message
     pause(1)
     uiwait(msgbox({
-        ['Observe that the error remains well below 1e-13, does not increase over time, and is ',...
-        'reasonably well approximated by the error estimator embedded in the algorithm. Also ',...
-        'notice how the step size starts conservatively, but gradually increases and automatically ',...
-        'adapts itself to the largest possible value that still gives the desired accuracy.']
+        ['Observe that the error remains below 1e-13, does not increase over time, and that ',...
+        'its trend is reasonably well approximated by the error estimator embedded in the ',...
+        'algorithm. Also notice how the step size starts conservatively, but quickly ',...
+        'increases and automatically adapts itself to the largest possible value that still ',...
+        'gives the desired accuracy.']
         ''
         'That''s pretty good, but of course it''s an exceedingly simple example.';
         ' '
@@ -129,7 +129,7 @@ function rkn1210_DEMO
     Vp  = sqrt(muE*(2/rp-1/a)); % speed at perigee
     y0  = [rp 0 0]; % initial position
     yp0 = [0 Vp Vp]*sqrt(2)/2; % initial velocity
-    [t, y, dummy,dummy, output] = rkn1210(@f2, [0 5*T], y0, yp0, options);%#ok
+    [t, y, dummy_,dummy_, output] = rkn1210(@f2, [0 5*T], y0, yp0, options);%#ok
         
     % show results
     figure(1), clf, hold on
@@ -174,33 +174,34 @@ function rkn1210_DEMO
           
     % Close previous figure
     close(1);
-    
-    % initialize waitbar
-    wait = waitbar(0, 'integrating circular orbit...');
 
-    % start integration (circular orbit again)
+    % initialize waitbar
+    wait = waitbar(0, 'integrating high-eccentricity orbit...');
+
+    % start integration (near-parabolic orbit)
+    tend = 2e5;
     options = odeset(...
         'abstol'   , 1e-16,...
         'outputfcn', @OutputFcn1);
-    [t, y, dummy,dummy, output] = rkn1210(f, 2*pi*[0, 25], [1;0], [0;1], options);%#ok
+    [t, y, dummy_,dummy_, output] = rkn1210(f, [0 tend], [1;0], [0;1.413], options);%#ok
     
     % the output function
     function stop = OutputFcn1(t,y,dy,flag)%#ok
         % don't stop
         stop = false;
-        % only after sucessfull steps
+        % only after successful steps
         if isempty(flag)        
-            wait = waitbar(t/50/pi, wait); end
+            wait = waitbar(t/tend, wait); end
     end
     
     % kill waitbar
     close(wait)
-    
+        
     % Plot the circular orbit
     figure(1), clf, hold on
     set(1, 'position', position(800, 600));
-    plot(y(:,1), y(:,2), '.k', 'markersize', 1);
-    title('Integrated circular orbit'), xlabel('X'), ylabel('Y')
+    plot(y(:,1), y(:,2), 'k', 'markersize', 10);
+    title('Integrated high-eccentricity orbit'), xlabel('X'), ylabel('Y')
     axis equal, axis tight
     
     %% Using event functions
@@ -215,7 +216,7 @@ function rkn1210_DEMO
         'to display the instantaneous integration step, and an event function that detects when the ',...
         'Y-coordinate becomes negative. When this happens, the integration is terminated:']}, ...
         'Fourth demonstration', 'modal'));
-    
+ 
     % initialize figure
     figure(1), clf, hold on
                 
@@ -252,7 +253,7 @@ function rkn1210_DEMO
         % value is simply Y-coordinate
         value = y(2);
     end
-      
+    
     %% Thanks & enjoy
     
     pause(1)

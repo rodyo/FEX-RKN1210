@@ -1,4 +1,4 @@
-function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
+function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 % RKN1210       12th/10th order Runge-Kutta-Nyström integrator
 %
 % RKN1210() is a 12th/10th order numerical integrator for second-order 
@@ -109,16 +109,16 @@ function [tout, yout, dyout, varargout] = rkn1210(funfcn, tspan, y0, yp0, option
 %             AbsTol (in [options]) to increase the accuracy of these
 %             roots when required.
 %
-%    output - structure containing additional information about the
+%    info   - structure containing additional information about the
 %             integration. It has the fields:
 %
-%             output.stepsize         step size (sucesful steps only) at
+%             info.stepsize         step size (sucesful steps only) at
 %                                     each time [tn]
-%             output.estimated_error  estimate of the largest possible
+%             info.estimated_error  estimate of the largest possible
 %                                     error at each time [tn]
-%             output.rejected         number of rejected steps
-%             output.accepted         number of accepted steps
-%             output.message          Short message describing the
+%             info.rejected         number of rejected steps
+%             info.accepted         number of accepted steps
+%             info.message          Short message describing the
 %                                     termination conditions
 %
 %             Note that these fields contain the information of ALL
@@ -215,8 +215,8 @@ These are also available in any format on request to these authors.
 
 % How to cite this work
 %{
-Rody Oldenhuis, "MATLAB implementation of an embedded 12/10th order Runge-Kutta-Nyström 
-integrator for ordinary differential equations", May 2015. Permanent link: 
+R.P.S. Oldenhuis, "MATLAB implementation of an embedded 12/10th order Runge-Kutta-Nyström 
+integrator for second-order ordinary differential equations", May 2015. Permanent link: 
 http://www.mathworks.com/matlabcentral/fileexchange/25291.
 %}
 
@@ -224,7 +224,8 @@ http://www.mathworks.com/matlabcentral/fileexchange/25291.
 % ELEMENTARY EXAMPLE
 %{
 
-% (2-body gravitational interaction / circular orbit):
+% (2-body gravitational interaction / circular orbit;
+% copy-pastable)
 
 clc
 
@@ -233,24 +234,23 @@ f1 = @(t, y) -y/sqrt(y'*y)^3;
 f2 = @(t, y) [y(3:4); -y(1:2)/sqrt(y(1:2).'*y(1:2))^3];
 
 % RKN1210 with moderate accuracy setting
-disp('RKN1210, with AbsTol = RelTol = 1e-6:')
-options = odeset('RelTol', 1e-6, 'AbsTol', 1e-6);
-tic
-  [t1, y1] = rkn1210(f1, [0 1000], [1; 0], [0; 1], options);
-toc
-disp('Maximum absolute error:')
-max( (y1(:,1)-cos(t1)).^2 + (y1(:,2)-sin(t1)).^2 )
+disp('RKN1210, with AbsTol = 1e-6, RelTol = 1e-3')
+options = odeset('AbsTol', 1e-6, 'RelTol', 1e-3);
+tic, [t1,y1] = rkn1210(f1, [0 1000], [1; 0], [0; 1], options); toc
+fprintf(1, 'Maximum absolute error: %g\n',...
+    max( (y1(:,1)-cos(t1)).^2 + (y1(:,2)-sin(t1)).^2 ));
+fprintf(1, 'Number of function evaluations: %d\n', ...
+    numel(t1));
 
 % This is how much ODE113 will have to be tuned to achieve similar accuracy
 fprintf('\n\n')
-disp('Compare with ODE113, which needs AbsTol = RelTol = 8e-9:')
-options = odeset('RelTol', 8e-9, 'AbsTol', 8e-9);
-tic
-  [t2, y2] = ode113(f2, [0, 1000], [1; 0; 0; 1], options);
-toc
-disp('Maximum absolute error:')
-max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
-
+disp('Compare with ODE113 with AbsTol = RelTol = 8e-9:')
+options = odeset('RelTol',8e-9, 'AbsTol',8e-9);
+tic, [t2,y2] = ode113(f2, [0, 1000], [1; 0; 0; 1], options); toc
+fprintf(1, 'Maximum absolute error: %g\n',...
+    max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 ));
+fprintf(1, 'Number of function evaluations: %d\n', ...
+    numel(t2));
 %}
 
 
@@ -261,693 +261,688 @@ max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 )
 
     %% Initialize
     
-    % Load coefficients (and prevent having to load them 
-    % every time the function is called)
-    persistent c A B Bp Bhat Bphat
-    if isempty(c)
-        [c, A, B,Bp, Bhat,Bphat] = getCoefficients(); end
+    % Create structures to pass data around more easily
     
-    % Check user input    
-    argo = nargout;
-    check_inputs(funfcn, tspan, y0, yp0, options, varargin{:});
-
-    % initialize all variables
-          exitflag = 0;                          pow = 1/11;
-                t0 = tspan(1);                tfinal = tspan(end);
-                 t = t0;                           y = y0(:);
-                dy = yp0(:);                    tout = t0;
-              yout = y0(:).';                  dyout = yp0(:).';
-              hmin = abs(tfinal-t)/1e12;           f = y0(:)*zeros(1,17);
-       have_events = false;                     halt = false;
-    have_outputFcn = false;           produce_output = (nargout ~= 0);
-             index = 1;                           yp = y0;
-               dyp = yp0;
-
-    % initialize output-structure
-    output.stepsize = [];               output.fevals = 1; % (see below)
-    output.rejected = 0;              output.accepted = 0;
-      output.d2ydt2 = [];             output.message  = 'Integration not started.';
-                               output.estimated_error = [];
-
-    % times might be given in reverse
-    direction = 1 - 2*(numel(tspan)==2 && tfinal<t0);
-    
-    % Test whether user-defined function evaluates
-    try
-        f(:,1) = funfcn(t, y);        
-    catch ME
-        ME2 = MException(...
-            [mfilename ':incorrect_funfcnoutput'], ...
-            'Derivative function should return a %d-element column vector.', numel(y0));
-        throw(addCause(ME2,ME));
-    end
-
-    % parse options
     if (nargin < 5)
-        options = odeset; end                           % initial options structure
-
-    Stats       = odeget(options, 'Stats', 'off');      % display statistics at the end?
-    abstol      = odeget(options, 'AbsTol', 1e-14);     % Absolute tolerance
-    reltol      = odeget(options, 'RelTol', 1e-7);      % Relative tolerance
-    hmax        = odeget(options, 'MaxStep', tfinal-t); % defaults to entire interval
-    initialstep = odeget(options, 'InitialStep');       % default determined later
-    Event       = odeget(options, 'Event', []);         % defaults to no eventfunctions
-    OutputFcn   = odeget(options, 'OutputFcn', []);     % defaults to no output functions
-    NormControl = odeget(options, 'NormControl', 'off');% use norm of solution rather than 
-                                                        % component wise error
-
-    % FUTURE WORK    
-    MassMatrix  = odeget(options, 'Mass', []); %#ok<NASGU> Mass matrix, for problems of the 
-                                               %           form M(t,y)*y'' = F(t,y)
-                                           
-    % Some obvious truths
-    abstol = abs(abstol);
-    reltol = abs(reltol);
-    if ~isempty(initialstep) && direction*initialstep < 0
-        warning([mfilename ':initialstep_wrong_direction'],...
-            ['The sign of the initial step disagrees with the integration ',...
-            'direction implied by argument tspan; setting the sign of the ',...
-            'initial step equal to the implied direction ']);
-        initialstep = direction * abs(initialstep);
-    end
-    if direction*hmax < 0
-        warning([mfilename ':maxstep_wrong_direction'],...
-            ['The sign of the maximum step disagrees with the integration ',...
-            'direction implied by the argument tspan; setting the sign of the ',...
-            'maximum step equal to the implied direction ']);
-        hmax = sign(initialstep)* abs(hmax);
-    end
+        options = odeset; end      
     
-                                                          
-    % in case of Event/output functions, define a few extra parameters
-    if ~isempty(Event)
+    input = struct(...
+        'funfcn'  , funfcn,...
+        'tspan'   , tspan,...
+        'y0'      , y0,...
+        'yp0'     , yp0,...
+        'options' , options, ...
+        'varargin', {varargin} ...
+        );
+    
+    % Check user input 
+    input = check_and_correct_inputs(input);
 
-        % so we DO have to evaluate event-functions
-        have_events = true;
+                                                             
+    % In case of Event/output functions, initialize and/or modify a few extra parameters    
+    opts = input.options;
+    
+    if ~isempty(opts.Events)
+        
         % cast into cell-array if only one function is given (easier later on)
-        if isa(Event, 'function_handle')
-            Event = {Event}; end
-        % number of functions provided
-        num_events = numel(Event);
-
+        if isa(opts.Events, 'function_handle')
+            opts.Events = {opts.Events}; end
+        
+        % Init event function values
+        input.previous_event_values = NaN(numel(opts.Events),1);
+        
         % Check if all are indeed function handles
-        for ii = 1:num_events
-            if isempty(Event{ii}) || ~isa(Event{ii}, 'function_handle')
+        for ii = 1:numel(opts.Events)
+            if isempty(opts.Events{ii}) || ~isa(opts.Events{ii}, 'function_handle')
                 error([mfilename ':event_not_function_handles'],...
-                    ['Unsupported class for event function received; event %d is of class ''%s''.\n',...
-                    '%s only supports function handles.'], ...
-                    ii, class(Event{ii}), upper(mfilename));
+                    ['Unsupported class for event function received; event %d is of class ',...
+                    '''%s''.\n%s only supports function handles.'], ...
+                    ii, class(opts.Events{ii}), upper(mfilename));
             end
         end
 
-        % initialize TE (event times), YE (event solutions) YPE (event
+        % Initialize TE (event times), YE (event solutions) YPE (event
         % derivs) and IE (indices to corresponding event function). Check
         % user-provided event functions at the same time
-        previous_event_values = zeros(num_events,1);
-        for k = 1:num_events
+        input.previous_event_values = zeros(numel(opts.Events),1);
+        for k = 1:numel(opts.Events)
             try
-                previous_event_values(k) = Event{k}(t, y, dy);
+                input.previous_event_values(k) = opts.Events{k}(...
+                    tspan(1),...
+                    y0,...
+                    yp0);
 
             catch ME
                 ME2 = MException(...
-                    [mfilename ':eventFcn_dont_evaluate'],...
-                    'Event function #%1d failed to evaluate on initial call.', k);
+                    [mfilename ':cannot_evaluate_eventFcn'],...
+                    'Event function #%1d failed to evaluate on initial call.',...
+                    k);
                 throw(addCause(ME2,ME));
 
             end
         end
 
-        if produce_output
-            TE = []; YE = []; YPE = []; IE = []; end
-
     end
 
-    if ~isempty(OutputFcn)
+    if ~isempty(opts.OutputFcn)
+        
+        % Cast into cell-array if only one function is given (easier later on)
+        if isa(opts.OutputFcn, 'function_handle')
+            opts.OutputFcn = {opts.OutputFcn}; end
+        
+        % WHICH elements should be passed to the output function?
+        opts.OutputSel = odeget(opts, 'OutputSel', 1:numel(y0));
+        % adjust the number of points passed to the output functions by this factor
+        opts.Refine = odeget(opts, 'Refine', 1);
 
-        % so we DO have to evaluate output-functions
-        have_outputFcn = true;
-        % cast into cell-array if only one function is given (easier later on)
-        if isa(OutputFcn, 'function_handle')
-            OutputFcn = {OutputFcn}; end
-        % number of functions provided
-        num_outputFcn = numel(OutputFcn);
-
-        % Check if all are indeed function handles
-        for ii = 1:num_outputFcn
-            if isempty(OutputFcn{ii}) || ~isa(OutputFcn{ii}, 'function_handle')
+        % 'init' phase
+        for k = 1:numel(opts.OutputFcn)
+            
+            % Check if all are indeed function handles
+            if isempty(opts.OutputFcn{k}) || ~isa(opts.OutputFcn{k}, 'function_handle')
                 error([mfilename ':output_not_function_handles'],...
                     ['Unsupported class for output function received; output function %d is of class ''%s''.\n',...
                     '%s only supports function handles.'],...
-                    ii, class(OutputFcn{ii}), upper(mfilename));
+                    k, class(opts.OutputFcn{k}), upper(mfilename));
             end
-        end
-
-        % WHICH elements should be passed to the output function?
-        OutputSel = odeget(options, 'OutputSel', 1:numel(y0));
-        % adjust the number of points passed to the output functions by this factor
-        Refine = odeget(options, 'Refine', 1);
-
-        % call each output function with 'init' flag. Also check whether
-        % the user-provided output function evaluates
-        for k = 1:num_outputFcn
+            
+            % call each output function with 'init' flag. Also check whether
+            % the user-provided output function evaluates
             try
-                OutputFcn{k}(t, y(OutputSel), dy(OutputSel), 'init');
+                opts.OutputFcn{k}(...
+                    tspan(1),...
+                     y0(opts.OutputSel),...
+                    yp0(opts.OutputSel),...
+                    'init');
 
             catch ME
                 ME2 = MException(...
                     [mfilename ':OutputFcn_doesnt_evaluate'],...
-                    'Output function #%d failed to evaluate on initial call.', k);
+                    'Output function #%d failed to evaluate on initial call.',...
+                    k);
                 throw(addCause(ME2,ME));
 
             end
         end
     end
+    
+    input.options = opts;
     
     
     %% Perform integration
 
     % Use dense output routines if [tspan] has more than two elements
-    if (numel(tspan) > 2)
-        rkn1210_dense_output();
+    % and the user does not intend to work with deval() 
+    if (numel(tspan) > 2 && nargout ~= 1)
+        [varargout{1:nargout}] = rkn1210_dense_output(input);
     else 
-        rkn1210_sparse_output();
+        [varargout{1:nargout}] = rkn1210_sparse_output(input);
     end
-    
-    
-    %% Helper functions
-
-    % Dense output
-    % FIXME: use deval (interpolating polynomials rather than recursion)
-    function rkn1210_dense_output()
-        % the output times are already known
-        tout = tspan(:);
-        
-        % call this function as many times as there are times in [tspan]
-        for tn = 1:numel(tspan)-1
-            
-            % new initial values
-            tspanI = tspan(tn:tn+1);
-            y0     = yout (end, :);
-            yp0    = dyout(end, :);
-            
-            % call the integrator
-            if have_events
-                [toutI, youtI, dyoutI, TEI, YEI, DYEI, IEI, exitflag, outputI] = ...
-                    rkn1210(funfcn, tspanI, y0, yp0, options);
-            else
-                [toutI, youtI, dyoutI, exitflag, outputI] = ...
-                    rkn1210(funfcn, tspanI, y0, yp0, options);
-            end
-            
-            % new initial step is old next-to-last step
-            options = odeset(options, ...
-                'InitialStep', outputI.stepsize(max(1,end-1)));
-            
-            % Append the solutions
-            yout  = [yout;   youtI(end, :)]; %#ok
-            dyout = [dyout; dyoutI(end, :)]; %#ok
-            if have_events
-                TE  = [TE; TEI];   IEI  = [ IE;  IEI]; %#ok
-                YEI = [YE; YEI];   DYEI = [YPE; DYEI]; %#ok
-            end
-            
-            % process the output
-            output.stepsize        = [output.stepsize; outputI.stepsize];
-            output.fevals          = output.fevals + outputI.fevals;
-            output.rejected        = output.rejected + outputI.rejected;
-            output.accepted        = output.accepted + outputI.accepted;
-            output.estimated_error = [output.estimated_error; outputI.estimated_error];
-            
-            % evaluate any output functions at each [t] in [tspan]
-            if have_outputFcn
-                
-                % evaluate all functions
-                for fk = 1:num_outputFcn
-                    try
-                        halt = halt | OutputFcn{fk}(toutI, youtI(OutputSel), dyoutI(OutputSel), []);
-                        
-                    catch ME
-                        ME2 = MException(...
-                            [mfilename ':OutputFcn_failure_integration'],...
-                            'Output function #%1d failed to evaluate during integration.', fk);
-                        throw(addCause(ME2, ME));
-                    end
-                end
-                
-                % halt integration when one of them has requested that
-                if halt
-                    exitflag = 2;
-                    finalize();
-                    return
-                end
-            end
-            
-            % should we quit?
-            if exitflag == -2 || exitflag == 3
-                break, end
-        end
-        
-        % we're done.
-        index = size(yout,1);
-        finalize();
-        
-    end
-    
-    % Nominal use case: sparse output
-    function rkn1210_sparse_output()
-
-        % Initialize all variables            
-        if produce_output
-            [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output); end
-
-        % Initial step
-        if isempty(initialstep)
-            % default initial step
-            h = abstol^pow / max(norm([dy.' f(:,1).'], 'inf'), 1e-4);
-            h = min(hmax,max(h,hmin));        
-        else
-            % user provided initial step
-            h = initialstep;
-        end
-
-        % (take care of direction)
-        h = direction*abs(h);
-
-        % the main loop
-        while (abs(t-tfinal) > 0)
-
-            % take care of final step
-            if ( direction*(t+h) > direction*tfinal )
-                h = direction*max(hmin, abs(t-tfinal)); end
-
-            % pre-compute the square (it's used often enough)
-            h2 = h*h;
-
-            % Compute the second-derivative
-            % NOTE: 'Vectorized' in ODESET() has no use; we need the UPDATED
-            % function values to calculate the NEW ones, i.e., the function
-            % evaluations are not independent.
-            for jj = 1:17
-                f(:,jj) = funfcn( t + c(jj)*h, y + c(jj)*h*dy + h2*f*A(:,jj) );
-                output.fevals = output.fevals + 1;
-            end
-
-            % check for inf or NaN
-            if any(~isfinite(f(:)))
-                exitflag = -2;
-                % use warning (not error) to preserve output thus far
-                warning([mfilename ':nonfinite_values'],...
-                     ['INF or NAN value encountered during the integration.\n',...
-                      'Terminating integration...']);
-                finalize();
-                return;
-            end % non-finite values
-
-            % Pre-compute solutions
-            fBhat  = f*Bhat;     new_y  =  y + h*dy + h2*fBhat;
-            fBphat = f*Bphat;    new_dy = dy + h*fBphat;  
-            
-            % Update the solution only if the error is acceptable
-            if strcmpi(NormControl, 'on') 
-                
-                % Estimate the error using norm of solution 
-                delta1 = norm(h2*(fBhat  - f*B )); % error ~ ||Y - y||
-                delta2 = norm(h *(fBphat - f*Bp)); % error ~ ||dot{Y} - dot{y}||
-                delta  = max(delta1, delta2);      % always use worst case error...
-                
-                % ...and compare agains most stringent demand
-                step_accepted = delta <= min(...
-                    abstol, ...
-                    reltol * max(norm(new_y), norm(new_dy)) );
-            else
-                
-                % Per-component error estimation (usually more stringent) 
-                delta1 = abs(h2*(fBhat  - f*B )); % error ~ |Y - y|
-                delta2 = abs(h *(fBphat - f*Bp)); % error ~ |dot{Y} - dot{y}|
-                delta  = max(delta1, delta2);     % always use worst case error...
-                
-                % ...and compare agains most stringent demand
-                step_accepted = all(delta <= min(...
-                    abstol, ...
-                    reltol * max(abs(new_y), abs(new_dy)) ));
-                
-            end
-                        
-            % (used for stats and stepsize control)
-            delta = max(delta(:));
-            
-            if step_accepted
-
-                % update the new solution                
-                tp  = t;     t = t + h;
-                yp  = y;     y = new_y;
-                dyp = dy;   dy = new_dy;   index = index + 1;
-                
-                if produce_output 
-                    
-                    % if new values won't fit, first grow the arrays
-                    % NOTE: This construction is WAY better than growing the arrays on
-                    % EACH iteration; especially for "cheap" integrands, this
-                    % construction causes a lot less overhead.                    
-                    if index > size(yout,1)                    
-                        [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output); end
-            
-                    % insert updated values                
-                    tout (index,:) = t;
-                    yout (index,:) = y.';
-                    dyout(index,:) = dy.';
-
-                    output.d2ydt2(index,:) = f(:,1).';
-                    output.stepsize(index-1) = h;
-                    output.estimated_error(index-1) = max(delta(:));
-                    output.accepted = output.accepted + 1;
-                    
-                end
-
-                % evaluate event-funtions
-                if have_events
-                    for fk = 1:num_events
-                        % evaluate event function, and check if any have changed sign
-                        %
-                        % NOTE: although not really necessary (event functions have been
-                        % checked upon initialization), use TRY-CATCH block to produce
-                        % more useful errors in case something does go wrong.
-                        terminate = false;
-                        try
-                            % evaluate function
-                            [value, isterminal, zerodirection] = ...
-                                Event{fk}(t, y, dy);
-
-                            % look for sign change
-                            if (previous_event_values(fk)*value < 0)
-                                % ZERODIRECTION:
-                                %  0: detect all zeros (default
-                                % +1: detect only INcreasing zeros
-                                % -1: detect only DEcreasing zeros
-                                if (zerodirection == 0) ||...
-                                   (sign(value) == sign(zerodirection))
-                               
-                                    % terminate?
-                                    terminate = terminate || isterminal;
-                                    
-                                    % Detect the precise location of the zero
-                                    % NOTE: try-catch is necessary to prevent things like
-                                    % discontinuous event-functions from resulting in
-                                    % unintelligible error messages
-                                    if produce_output
-                                        try
-                                            [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
-                                                index, tout, yout,dyout, TE,YE,YPE,IE, output,...
-                                                funfcn, abstol,...
-                                                Event{fk}, fk,...
-                                                h,...
-                                                yp, dyp, ...
-                                                tp, previous_event_values(fk),...
-                                                t , value,...
-                                                options);
-
-                                        catch ME
-                                            ME2 = MException(...
-                                                [mfilename ':eventFcn_failure_zero'],...
-                                                'Failed to locate a zero for event function #%1d.', fk);
-                                            throw(addCause(ME2,ME));
-
-                                        end
-                                    end
-                                end
-                            end
-
-                            % save new value
-                            previous_event_values(fk) = value;
-
-                        catch ME
-                            ME2 = MException(...
-                                [mfilename ':eventFcn_failure_integration'],...
-                                'Event function #%1d failed to evaluate during integration.', fk);
-                            throw(addCause(ME2,ME));
-
-                        end
-
-                        % do we need to terminate?
-                        if terminate
-                            exitflag = 3;
-                            finalize();
-                            return;
-                        end
-
-                    end
-                end % Event functions
-
-                % evaluate output functions
-                if have_outputFcn
-                    for fk = 1:num_outputFcn
-                        % Evaluate kth output function
-                        try
-                            % TODO: behavior inconsistent with that of ODE suite
-                            halt = halt | OutputFcn{fk}(...
-                                t, ...
-                                y (OutputSel), ...
-                                dy(OutputSel), ...
-                                []);
-
-                        catch ME
-                            ME2 = MException(...
-                                [mfilename ':OutputFcn_failure_integration'],...
-                                'Output function #%1d failed to evaluate during integration.', k);
-                            throw(addCause(ME2,ME));
-
-                        end
-                        
-                        % Halt integration when requested
-                        if halt
-                            exitflag = 2;
-                            finalize();
-                            return;
-                        end
-
-                    end
-                end % Output functions
-
-            % rejected step: just increase its counter
-            else
-                output.rejected = output.rejected + 1;
-
-            end % accept or reject step
-
-            % adjust the step size
-            if (delta == 0)
-                % (we made NO error --> double the step)            
-                h = 2*h; 
-            else        
-                h_new = direction * min(hmax, ...
-                    0.9*abs(h)*( min(abstol, reltol*max(norm(new_y),norm(new_dy))) / delta )^pow);
-                if h_new~=0
-                    h = h_new; end
-            end
-
-            % Use [Refine]-option when output functions are present
-            if have_outputFcn
-                h = h/Refine; end
-            % check the new stepsize
-            if (abs(h) < hmin)
-                exitflag = -1;
-                % use warning to preserve results thus far
-                warning([mfilename ':stepsize_too_small'], ...
-                    ['Failure at time t = %6.6e: \n',...
-                    'Step size fell below the minimum acceptible value of %6.6d.\n',...
-                    'A singularity is likely.'], t, hmin);
-            end
-
-        end % main loop
-
-        % if the algorithm ends up here, all was ok
-        finalize();
-        
-    end % rkn1210_sparse_output
-    
-    % clean up and finalize
-    function finalize
-
-        % cut off any spurious elements
-        if produce_output
-            tout  = tout (1:index,:);
-            yout  = yout (1:index,:);
-            dyout = dyout(1:index,:);
-            output.stepsize        = output.stepsize(1:index-1);
-            output.estimated_error = output.estimated_error(1:index-1);
-        end
-
-        % neutral flag means all OK
-        if (exitflag == 0)
-            exitflag = 1; end
-
-        % final call to the output functions
-        if have_outputFcn
-            for fk = 1:num_outputFcn
-                try
-                    OutputFcn{fk}(t, y(OutputSel), dy(OutputSel), 'done');
-
-                catch ME
-                    ME2 = MException(...
-                        [mfilename ':OutputFcn_failure_finalization'],...
-                        'Output function #%1d failed to evaluate during final call.', fk);
-                    throw(addCause(ME2,ME));
-
-                end
-            end
-        end
-
-        % add message to output structure
-        if produce_output
-            switch exitflag
-                case +1
-                    output.message = 'Integration completed sucessfully.';
-                case +2
-                    output.message = 'Integration terminated by one of the output functions.';
-                case +3
-                    output.message = 'Integration terminated by one of the event functions.';
-                case -1
-                    output.message = sprintf(['Integration terminated successfully, but the step size\n',...
-                        'fell below the minimum allowable value of %6.6e.\n',...
-                        'for one or more steps. Results may be inaccurate.'], hmin);
-                case -2
-                    output.message = sprintf(['Integration unsuccessfull; second derivative function \n',...
-                        'returned a NaN or INF value in the last step.']);
-            end
-
-            % handle sol (deval()) case
-            if argo == 1
-
-                % Construct 'sol' structure
-                sol.solver = 'rkn1210';
-                sol.x  = tout;
-                sol.y  = yout;
-                sol.yp = dyout;
-
-                sol.extdata = struct(...
-                    'odefun'  , funfcn,...
-                    'options' , options,...
-                    'varargin', {varargin});
-
-                sol.stats = struct(...
-                    'nsteps' , output.accepted,...
-                    'nfailed', output.rejected,...
-                    'nfevals', output.fevals);
-
-                if have_events
-                    sol.xe  = TE;    sol.ie  = IE;
-                    sol.ye  = YE;    sol.ype = YPE;                    
-                end
-
-                % output argument 'tout' is an alias for 'sol' in this case:
-                tout = sol;
-
-            else
-                % handle varargout
-                if have_events
-                    varargout{1} = TE;
-                    varargout{2} = YE;
-                    varargout{3} = YPE;
-                    varargout{4} = IE;
-                    varargout{5} = exitflag;
-                    varargout{6} = output;
-                else
-                    varargout{1} = exitflag;
-                    varargout{2} = output;
-                end
-            end
-        end
-
-        % display stats
-        if strcmpi(Stats, 'on')
-            fprintf(1, '\n\n Number of successful steps     : %6d\n', output.accepted);
-            fprintf(1, ' Number of rejected steps       : %6d\n', output.rejected);
-            fprintf(1, ' Number of evaluations of f(t,y): %6d\n\n', output.fevals);
-            fprintf(1, '%s\n\n', output.message);
-        end
-
-    end % finalize the integration
-
-    
-
     
 end % RKN1210 integrator
 
 
 % Check user inputs
-function check_inputs(funfcn, tspan, y0, yp0, options, varargin) %#ok<VANUS>
+function input = check_and_correct_inputs(input)
 
-    assert(nargin >= 4 && nargin <= 5,...
-        '%s requires either 4 or 5 input arguments.', upper(mfilename));
-    assert( isa(funfcn, 'function_handle'),...
+    % Check consistency of user input
+    argc = numel(fieldnames(input))-1 + numel(input.varargin);
+    
+    assert(argc >= 4 && argc <= 5,...
+        '%s requires either 4 or 5 input arguments.',...
+        upper(mfilename));
+    assert( isa(input.funfcn, 'function_handle'),...
         [mfilename ':funfcn_isnt_a_function'], ...
         'Second derivative f(t,y) must be given as function handle.');
-    assert( ~isempty(tspan) && numel(tspan) >= 2,...
+    assert( ~isempty(input.tspan) && numel(input.tspan) >= 2,...
         [mfilename ':tspan_empty'],...
         'Time interval [tspan] must contain at least 2 values.');
-    assert( all(diff(tspan) ~= 0),...
+    assert( all(diff(input.tspan) ~= 0),...
         [mfilename ':tspan_dont_span'],...
         'Values in [tspan] must all span a non-zero interval.');
-    assert( all(diff(tspan) > 0) || all(diff(tspan) < 0), ...
+    assert( all(diff(input.tspan) > 0) || all(diff(input.tspan) < 0), ...
         [mfilename ':tspan_must_increase'],...
         'The entries in tspan must be monotonically increasing or decreasing.');
-    assert( numel(y0) == numel(yp0),...
+    assert( numel(input.y0) == numel(input.yp0),...
         [mfilename ':initial_values_disagree'], ...
         'Initial values [y0] and [yp0] must contain the same number of elements.');
-    if nargin == 5
-        assert( isstruct(options),...
+    if argc == 5
+        assert( isstruct(input.options),...
             [mfilename ':options_not_struct'], ...
             'Options must be given as a structure created with ODESET().');
     end
-
+    
+    % Process options   
+    opts = input.options;
+    
+    opts.Stats       = odeget(opts, 'Stats', 'off');      % display statistics at the end?
+    opts.AbsTol      = odeget(opts, 'AbsTol', 1e-14);     % Absolute tolerance
+    opts.RelTol      = odeget(opts, 'RelTol', 1e-7);      % Relative tolerance
+    opts.MaxStep     = odeget(opts, 'MaxStep', input.tspan(end) - input.tspan(1)); % defaults to entire interval
+    opts.InitialStep = odeget(opts, 'InitialStep');       % default determined later
+    opts.Events      = odeget(opts, 'Events', []);        % defaults to no eventfunctions
+    opts.OutputFcn   = odeget(opts, 'OutputFcn', []);     % defaults to no output functions
+    opts.NormControl = odeget(opts, 'NormControl', 'off');% use norm of solution rather than 
+                                
+    % Some obvious truths
+    opts.AbsTol = abs(opts.AbsTol);
+    opts.RelTol = abs(opts.RelTol);
+    direction = 1 - 2*(input.tspan(end) < input.tspan(1));
+    if ~isempty(opts.InitialStep) && direction*opts.InitialStep < 0
+        warning([mfilename ':initialstep_wrong_direction'],...
+            ['The sign of the initial step disagrees with the integration ',...
+            'direction implied by argument tspan; setting the sign of the ',...
+            'initial step equal to the implied direction ']);
+        opts.InitialStep = direction * abs(opts.InitialStep);
+    end
+    if direction*opts.MaxStep < 0
+        warning([mfilename ':maxstep_wrong_direction'],...
+            ['The sign of the maximum step disagrees with the integration ',...
+            'direction implied by the argument tspan; setting the sign of the ',...
+            'maximum step equal to the implied direction ']);
+        opts.MaxStep = sign(opts.InitialStep)* abs(opts.MaxStep);
+    end
+    
+    input.options = opts;
+     
 end
+
 
 % Efficiently grow arrays 
-function [tout, yout, dyout, output] = grow_arrays(tout, yout, dyout, output)
+function output = grow_arrays(output)
+    
+    % First call - initialize all arrays. Assign about 5MB
+    if numel(output.tout) == 1
         
-    K      = 1.2;
+        % With M the number of elements in y0 and N the (unknown) number 
+        % of elements to be assigned to each of the output arrays, we need 
+        % to assign 
+        % 
+        %     N (tout)
+        %   M*N (yout)
+        %   M*N (dyout)
+        %     N (info.estimated_error)
+        %     N (info.stepsize)
+        %   M*N (info.d2ydt2d)
+        % _______________________+
+        % 3*N + 3*M*N = 3*N*(M+1)
+        % 
+        % If this is to be Y MB, and knowing that the first entries of all
+        % arrays have already been initialized, and using 8 bytes per double, 
+        % we get
+        %
+        %       8 * 3*(N+1)*(M+1) = 5e6
+        % -->                   N = 5e6/24/(M+1) - 1
+        %
+        M = size(output.yout,2);
+        N = floor(5e6/24/(M+1) - 1);
+        
+        % Generate data placeholders 
+        nans   = NaN(N,1);
+        nans_y = NaN(N,M);
+        
+        
+    % Subsequent calls -- grow the arrays by constant factor (ensures
+    % optimum memory complexity)
+    else
+        
+        % Growth factor
+        K = 1.2;
+        
+        % Generate data placeholders 
+        growth = ceil((K-1)*numel(output.tout));
+        nans   = NaN(growth,1);
+        nans_y = NaN(growth,size(output.yout,2));
 
-    growth = ceil((K-1)*numel(tout));
-    nans   = NaN(growth,1);
-    nans_y = NaN(growth,size(yout,2));
-
-    tout  = [tout;  nans];
-    yout  = [yout;  nans_y];
-    dyout = [dyout; nans_y];
-
-    output.estimated_error = [output.estimated_error;    nans  ];
-    output.stepsize        = [output.stepsize; nans  ];
-    output.d2ydt2          = [output.d2ydt2;   nans_y];
+    end
+    
+    % Grow the input arrays
+    % NOTE: (Rody Oldenhuis) since MATLAB uses lazy copy-on-write, the
+    % biggest performance hit (second only to the derivative function)
+    % is likely to be here. Don't be fooled; this is a LOT more efficient
+    % than growing the arrays once per integration step (as the ODE suite
+    % does it)
+    output.tout  = [output.tout;  nans];
+    output.yout  = [output.yout;  nans_y];
+    output.dyout = [output.dyout; nans_y];
+    
+    output.info.estimated_error = [output.info.estimated_error; nans  ];
+    output.info.stepsize        = [output.info.stepsize;        nans  ];
+    output.info.d2ydt2          = [output.info.d2ydt2;          nans_y];
 
 end
 
 
-% Detect events
-% use false-position method (derivative-free)
-function [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
-        index, tout, yout,dyout, TE,YE,YPE,IE, output, ...  %
-        funfcn, abstol,...
-        EventFcn, which_event,...      %
-        h, ...                         %
-        yp, dyp, ...                   %
-        ta, fa,...                     %
-        tb, fb,...                     %
-        options)                       %
+% Dense output
+% FIXME: use deval (interpolating polynomials rather than recursion)
+function varargout = rkn1210_dense_output(input)
 
+    % the output sizes are already known
+    nans   = NaN(numel(input.tspan)-1, 1);
+    nans_y = NaN(numel(input.tspan)-1, numel( input.y0));
+
+    output.tout  = input.tspan(:);      
+    output.yout  = [ input.y0(:).'; nans_y];
+    output.dyout = [input.yp0(:).'; nans_y];
+
+    output.info.fevals   = 0;   output.info.stepsize        = nans;
+    output.info.rejected = 0;   output.info.estimated_error = nans;
+    output.info.accepted = 0; 
+
+    % call this function as many times as there are times in [tspan]
+    for tn = 1:numel(input.tspan)-1
+
+        % new initial values
+        tspanI = input.tspan (tn:tn+1);
+        y0     = output.yout (tn, :);
+        yp0    = output.dyout(tn, :);
+
+        % call the integrator
+        if ~isempty(input.options.Events)
+            [dummy_, youtI, dyoutI, TEI, YEI, DYEI, IEI, output.exitflag, infoI] = ...
+                rkn1210(input.funfcn, tspanI, y0, yp0, input.options); %#ok<ASGLU>
+        else
+            [dummy_, youtI, dyoutI, output.exitflag, infoI] = ...
+                rkn1210(input.funfcn, tspanI, y0, yp0, input.options); %#ok<ASGLU>
+        end
+
+        % new initial step is old next-to-last step
+        input.options = odeset(input.options, ...
+            'InitialStep', infoI.stepsize(max(1,end-1)));
+
+        % Append the solutions
+        output.yout (tn+1,:) =  youtI(end, :); 
+        output.dyout(tn+1,:) = dyoutI(end, :); 
+        if ~isempty(input.options.Events)
+            output.TE (tn+1,:) = TEI;   output.IEI (tn+1,:) =  IEI; 
+            output.YEI(tn+1,:) = YEI;   output.DYEI(tn+1,:) = DYEI; 
+        end
+
+        % process Stats            
+        output.info.fevals    =  output.info.fevals   + infoI.fevals;
+        output.info.rejected  =  output.info.rejected + infoI.rejected;
+        output.info.accepted  =  output.info.accepted + infoI.accepted;
+
+        output.info.stepsize(tn)        = norm(infoI.stepsize       ,'inf');
+        output.info.estimated_error(tn) = norm(infoI.estimated_error,'inf');
+
+        % evaluate any output functions at each [t] in [tspan]
+        %{
+        % NOTE: (Rody Oldenhuis) ...why is this useful? -> check if this is how 
+        % ODEXX does it             
+        if ~isempty(options.OutputFcn)
+
+            % evaluate all functions
+            halt = false;
+            for fk = 1:numel(options.OutputFcn)
+                try
+                    halt = halt | options.OutputFcn{fk}(...
+                        toutI, ...
+                        youtI (options.OutputSel), ...
+                        dyoutI(options.OutputSel),...
+                        []);
+
+                catch ME
+                    ME2 = MException(...
+                        [mfilename ':OutputFcn_failure_integration'],...
+                        'Output function #%1d failed to evaluate during integration.',...
+                        fk);
+                    throw(addCause(ME2, ME));
+                end
+            end
+
+            % halt integration when one of them has requested that
+            if halt
+                output.exitflag = 2;
+                break;
+            end
+        end
+        %}
+
+        % should we quit?
+        if ~any(output.exitflag==[-1 0 1])
+            break, end
+    end
+
+
+    % we're done.
+    output.index = size(output.yout,1);
+    [varargout{1:nargout}] = finalize(input, output);
+
+end
+
+
+% Nominal use case: sparse output
+function varargout = rkn1210_sparse_output(input)
+
+    % Load coefficients (and prevent having to load them 
+    % every time the function is called)
+    persistent c A B Bp Bhat Bphat
+    if isempty(c)
+        [c, A, B,Bp, Bhat,Bphat] = getCoefficients(); end
+
+    % Abbreviations / constants
+    pow  = 1/10;              t0        = input.tspan(1);                
+    t    = t0;                tfinal    = input.tspan(end);
+    y    = input.y0(:);       hmin      = abs(tfinal-t)/1e12;  
+    dy   = input.yp0(:);      f         = input.y0(:)*zeros(1,17);
+    opts = input.options;     direction = 1 - 2*(tfinal < t0);
+
+    % IO variables
+    if nargout ~= 0
+
+        % Integration main output
+        output.tout  = t0;
+        output.yout  = input.y0(:).';           
+        output.dyout = input.yp0(:).';
+        output.index = 1;
+
+        % Algorithm exitstatus 
+        output.exitflag = 0;            
+
+        % Detailed algorithm info 
+        output.info.stepsize        = [];    output.info.fevals   = 1; % (see below)
+        output.info.rejected        = 0;     output.info.accepted = 0;
+        output.info.d2ydt2          = [];    output.info.message  = 'Integration not started.';
+        output.info.estimated_error = [];
+
+        % In case of event functions, initialize some more variables
+        if ~isempty(opts.Events)                
+            output.IE = [];   output.YE  = [];
+            output.TE = [];   output.YPE = [];            
+        end
+    end
+
+    % Test whether user-defined function evaluates
+    try
+       f(:,1) = input.funfcn(t, y);
+    catch ME
+       ME2 = MException(...
+           [mfilename ':incorrect_funfcnoutput'], ...
+           'Could not evaluate derivative; derivative function should return an array with ',...
+           'the same number of elements as in the initial values (%d).', ...
+           numel(y));
+       throw(addCause(ME2,ME));
+    end
+
+    % Initialize all variables            
+    if nargout~=0
+        output = grow_arrays(output); end
+
+    % Initial step
+    if isempty(opts.InitialStep)
+        % default initial step
+        h = opts.AbsTol^pow / max(norm([dy.' f(:,1).'], 'inf'), 1e-4);
+        h = min(opts.MaxStep,max(h,hmin));        
+    else
+        % user provided initial step
+        h = opts.InitialStep;
+    end
+
+    % (take care of direction)
+    h = direction*abs(h);
+
+    % The main loop
+    while (abs(t-tfinal) > 0)
+
+        % take care of final step
+        if ( direction*(t+h) > direction*tfinal )
+            h = direction*max(hmin, abs(t-tfinal)); end
+
+        % Compute the second-derivative
+        % NOTE: 'Vectorized' in ODESET() has no use; we need the UPDATED
+        % function values to calculate the NEW ones, i.e., the function
+        % evaluations are not independent.
+        for jj = 1:17
+            f(:,jj) = input.funfcn( t + h*c(jj), y + h*(c(jj)*dy + h*f*A(:,jj)) ); end
+        output.info.fevals = output.info.fevals + 17;
+
+        % check for inf or NaN
+        if any(~isfinite(f(:)))
+            output.exitflag = -2;
+            % use warning (not error) to preserve output thus far
+            warning([mfilename ':nonfinite_values'],...
+                 ['INF or NAN value encountered during the integration.\n',...
+                  'Terminating integration...']);
+            break;
+        end % non-finite values
+
+        % Pre-compute solutions
+        fBhat  = f*Bhat;     new_y  =  y + h*(dy + h*fBhat);
+        fBphat = f*Bphat;    new_dy = dy + h*fBphat;  
+
+        % Compute error estimate for this step 
+        if strcmpi(opts.NormControl, 'on') 
+
+            % Estimate the error using norm of solution 
+            delta1 = norm(h*h*(fBhat  - f*B )); % error ~ ||Y - y||
+            delta2 = norm(  h*(fBphat - f*Bp)); % error ~ ||dot{Y} - dot{y}||
+            delta  = max(delta1, delta2);       % always use worst case error...
+
+            % ...and compare agains most stringent demand                
+            step_tolerance = min(...
+                opts.AbsTol, ...
+                opts.RelTol * max(norm(new_y), norm(new_dy)) ...
+            );
+
+        else
+
+            % Per-component error estimation (usually more stringent) 
+            delta1 = abs(h*h*(fBhat  - f*B )); % error ~ |Y - y|
+            delta2 = abs(  h*(fBphat - f*Bp)); % error ~ |dot{Y} - dot{y}|
+            delta  = max(delta1, delta2);      % always use worst case error...
+
+            % ...and compare agains most stringent demand                
+            step_tolerance = min(...
+                opts.AbsTol, ...
+                opts.RelTol * norm([new_y new_dy], 'inf')...
+            );
+
+        end
+
+        % Update the solution only if the error is acceptable
+        if all(delta <= step_tolerance);
+
+            % update the new solution                
+            t  = t + h;
+            y  = new_y;
+            dy = new_dy;   
+
+            if nargout ~= 0
+
+                output.index = output.index + 1;
+
+                % if new values won't fit, first grow the arrays
+                % NOTE: This construction is WAY better than growing the arrays on
+                % EACH iteration; especially for "cheap" integrands, this
+                % construction causes a lot less overhead.                    
+                if output.index > size(output.yout,1)                    
+                    output = grow_arrays(output); end
+
+                % insert updated values                
+                output.tout (output.index,:) = t;
+                output.yout (output.index,:) = y.';
+                output.dyout(output.index,:) = dy.';
+
+                output.info.d2ydt2  (output.index,:)        = f(:,1).';
+                output.info.stepsize(output.index-1)        = h;
+                output.info.estimated_error(output.index-1) = max(delta(:));
+                output.info.accepted = output.info.accepted + 1;
+
+            end
+
+            % evaluate event-funtions
+            if ~isempty(opts.Events)
+
+                % Evaluate all functions
+                terminate = false;
+                for fk = 1:numel(opts.Events)
+                    % Evaluate event function, and check if any have changed sign
+                    %
+                    % NOTE: although not really necessary (event functions have been
+                    % checked upon initialization), use TRY-CATCH block to produce
+                    % more useful errors in case something does go wrong.
+
+                    try
+                        % evaluate function
+                        [value, isterminal, zerodirection] = ...
+                            opts.Events{fk}(t, y, dy);
+
+                        % look for sign change
+                        if (input.previous_event_values(fk)*value < 0)
+
+                            % ZERODIRECTION:
+                            %  0: detect all zeros (default
+                            % +1: detect only INcreasing zeros
+                            % -1: detect only DEcreasing zeros
+                            if (zerodirection == 0) ||...
+                               (sign(value) == sign(zerodirection))
+
+                                % terminate?
+                                terminate = terminate || isterminal;
+
+                                % Detect the precise location of the zero
+                                % NOTE: try-catch is necessary to prevent things like
+                                % discontinuous event-functions from resulting in
+                                % unintelligible error messages
+                                if nargout ~= 0
+                                    try
+                                        output = detect_Event(...
+                                            input, output, fk, value);
+
+                                    catch ME
+                                        ME2 = MException(...
+                                            [mfilename ':eventFcn_failure_zero'],...
+                                            'Failed to locate a zero for event function #%1d.',...
+                                            fk);
+                                        throw(addCause(ME2,ME));
+
+                                    end
+                                end
+                            end
+                        end
+
+                        % save new value
+                        input.previous_event_values(fk) = value;
+
+                    catch ME
+                        ME2 = MException(...
+                            [mfilename ':eventFcn_failure_integration'],...
+                            'Event function #%1d failed to evaluate during integration.',...
+                            fk);
+                        throw(addCause(ME2,ME));
+
+                    end
+
+                end
+
+                % do we need to terminate?
+                if terminate
+                    output.exitflag = 3;
+                    break;
+                end
+
+            end % Event functions
+
+            % evaluate output functions
+            if ~isempty(opts.OutputFcn)
+
+                % Evaluate all functions
+                halt = false;
+                for fk = 1:numel(opts.OutputFcn)
+                    % Evaluate kth output function
+                    try
+                        % TODO: behavior inconsistent with that of ODE suite
+                        halt = halt | opts.OutputFcn{fk}(...
+                            t, ...
+                            y (opts.OutputSel), ...
+                            dy(opts.OutputSel), ...
+                            []);
+
+                    catch ME
+                        ME2 = MException(...
+                            [mfilename ':OutputFcn_failure_integration'],...
+                            'Output function #%1d failed to evaluate during integration.',...
+                            k);
+                        throw(addCause(ME2,ME));
+
+                    end
+                end
+
+                % Halt integration when requested
+                if halt
+                    output.exitflag = 2;                        
+                    break;
+                end
+
+            end % Output functions
+
+        % rejected step: just increase its counter
+        else
+            output.info.rejected = output.info.rejected + 1;
+
+        end % accept or reject step
+
+        % Adjust the step size
+        if (delta == 0)
+            % (we made NO error --> double the step)            
+            h = 2*h; 
+        else        
+            h_new = direction * min(...
+                abs(opts.MaxStep), ...
+                min(0.9*abs(h)*( step_tolerance ./ delta ).^pow) ...
+            );
+            if h_new~=0
+                h = h_new; end
+        end
+
+        % Use [Refine]-option when output functions are present
+        if ~isempty(opts.OutputFcn)
+            h = h/opts.Refine; end
+        
+        % Check the new stepsize
+        if (abs(h) < abs(hmin))
+            output.exitflag = -1;
+            % use warning to preserve results thus far
+            warning([mfilename ':stepsize_too_small'], ...
+                ['Failure at time t = %6.6e: \n',...
+                'Step size fell below the minimum acceptible value of %6.6d.\n',...
+                'A singularity is likely.'],...
+                t, abs(hmin));
+        end
+
+    end % main loop
+
+    % Check, prepare & assign outputs
+    [varargout{1:nargout}] = finalize(input, output);
+
+end % rkn1210_sparse_output
+
+
+% Detect zero passages of event functions
+% using false-position method (derivative-free)
+function output = detect_Event(input, output,which_event, value)
+                                      
     % initialize
-    y0   = yp;     side          = 0;
-    dy0  = dyp;    iterations    = 0;
-    tt   = ta;     maxiterations = 1e4;
+    y0  = output.yout (output.index-1,:);    side          = 0;
+    dy0 = output.dyout(output.index-1,:);    iterations    = 0;
+    tt  = output.tout (output.index-1,:);    maxiterations = 1e3;
+    
+    fa = input.previous_event_values(which_event);   
+    ta = tt; 
+    
+    fb = value;                             
+    tb = output.tout(output.index,:);
 
     % prune unnessesary options, and set initial step to current step
-    opts = odeset(options,...
-        'Event'      , [],...
+    opts = odeset(input.options,...
+        'Events'     , [],...
         'OutputFcn'  , [],...
         'Stats'      , 'off',...
-        'InitialStep', h);
+        'InitialStep', output.info.stepsize(output.index-1));
 
     % Start root finding process
-    while (min(abs(fa),abs(fb)) > abstol)
+    while (min(abs(fa),abs(fb)) > opts.AbsTol)
 
         % Regula-falsi step
         iterations = iterations + 1;
@@ -969,7 +964,7 @@ function [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
         % RKN1210-routine to get appropriate values for [y] and [dy] at
         % the new time [tt] into the event function:
         [DUMMY_, Zyout, Zdyout, DUMMY_, Zoutput] = ...
-            rkn1210(funfcn, [ttp tt], y0, dy0, opts); %#ok<ASGLU>
+            rkn1210(input.funfcn, [ttp tt], y0, dy0, opts); %#ok<ASGLU>
 
         % set new initial step to next-to-last step of previous call            
         opts = odeset(opts, ...
@@ -980,12 +975,12 @@ function [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
         dy0 = Zdyout(end,:).';
 
         % NOW evaluate event-function with these values
-        fval = EventFcn(tt, y0, dy0);
+        fval = input.options.Events{which_event}(tt, y0, dy0);
 
-        % keep track of number of function evaluations
-        output.fevals = output.fevals + Zoutput.fevals; 
+        % keep track of number of stats
+        output.info.fevals = output.info.fevals + Zoutput.fevals; 
 
-        % compute new step
+        % Compute new step
         if (fb*fval>0)
             tb = tt; fb = fval;
             if side == -1
@@ -1014,28 +1009,150 @@ function [index, tout, yout,dyout, TE,YE,YPE,IE, output] = detect_Events(...
 
     % The zero has been found! insert values into proper arrays
     % TODO: (Rody Oldenhuis) Also grow these
-    TE  = [TE; tt];   YPE = [YPE; dy0];
-    YE  = [YE; y0];   IE  = [IE; which_event];
+    output.TE  = [output.TE; tt];   output.YPE = [output.YPE; dy0];
+    output.YE  = [output.YE; y0];   output.IE  = [output.IE; which_event];
 
     % The integrand first overshoots the zero; that's how it's
     % detected. We want the zero to be in the final arrays, but we also
     % want them in the correct order. So, move the overshoot one down, 
     % and insert the zero in its place:
 
-    index = index + 1;
-    if index > size(yout,1)
-        [tout, yout, dyout, output] = grow_arrays(...
-            tout, yout, dyout, output); 
+    output.index = output.index + 1;
+    if output.index > size(output.yout,1)
+        output = grow_arrays(output); end
+
+    output.yout (output.index  ,:) = output.yout(output.index-1,:);    
+    output.yout (output.index-1,:) = y0.';
+    
+    output.dyout(output.index  ,:) = output.dyout(output.index-1,:);        
+    output.dyout(output.index-1,:) = dy0.';
+    
+    output.tout (output.index  ,:) = output.tout(output.index-1,:);        
+    output.tout (output.index-1,:) = tt;
+
+    output.info.stepsize(output.index-1) = tt - output.tout(output.index-1);
+
+end % find zeros of event functions
+
+
+% clean up and finalize
+function varargout = finalize(input, output)
+
+    % Cut off any spurious elements
+    if nargout ~= 0
+        output.tout  = output.tout (1:output.index,:);
+        output.yout  = output.yout (1:output.index,:);
+        output.dyout = output.dyout(1:output.index,:);
+        if isfield(output.info, 'stepsize');
+            output.info.stepsize        = output.info.stepsize(1:output.index-1);
+            output.info.estimated_error = output.info.estimated_error(1:output.index-1);
+        end
     end
 
-    yout (index,:) = yout (index-1,:);    yout (index-1,:) = y0.';
-    dyout(index,:) = dyout(index-1,:);    dyout(index-1,:) = dy0.';
-    tout (index,:) = tout (index-1,:);    tout (index-1,:) = tt;
+    % Abbreav
+    opts = input.options;
 
-    output.stepsize(index-1) = tt-tout(index-1);
+    % neutral flag means all OK
+    if (output.exitflag == 0)
+        output.exitflag = 1; end
 
-end % find zeros of Event-functions
+    % final call to the output functions
+    if ~isempty(opts.OutputFcn)
+        for fk = 1:numel(opts.OutputFcn)
+            try
+                opts.OutputFcn{fk}(...
+                    output.tout (end,:),...
+                    output.yout (end,opts.OutputSel),...
+                    output.dyout(end,opts.OutputSel),...
+                    'done');
 
+            catch ME
+                ME2 = MException(...
+                    [mfilename ':OutputFcn_failure_finalization'],...
+                    'Output function #%1d failed to evaluate during final call.', ...
+                    fk);
+                throw(addCause(ME2,ME));
+
+            end
+        end
+    end
+
+    % add message to output structure
+    if nargout ~= 0
+
+        switch output.exitflag
+            case +1
+                output.info.message = 'Integration completed sucessfully.';
+            case +2
+                output.info.message = 'Integration terminated by one of the output functions.';
+            case +3
+                output.info.message = 'Integration terminated by one of the event functions.';
+            case -1
+                output.info.message = sprintf(['Integration terminated successfully, but ',...
+                    'the step size\nfell below the minimum allowable value of %6.6e.\n',...
+                    'for one or more steps. Results may be inaccurate.'], hmin);
+            case -2
+                output.info.message = sprintf(['Integration unsuccessfull; second ',...
+                    'derivative function \nreturned a NaN or INF value in the last step.']);
+        end
+
+        % handle sol (deval()) case
+        if nargout == 1
+
+            % Construct 'sol' structure
+            [dummy_, sol.solver] = fileparts(mfilename); %#ok<ASGLU>
+            sol.x  = output.tout;
+            sol.y  = output.yout;
+            sol.yp = output.dyout;
+
+            % TODO: strip non-ODEGET options
+            sol.extdata = struct(...
+                'odefun'  , input.funfcn,...
+                'options' , opts,...
+                'varargin', {input.varargin});
+
+            sol.stats = struct(...
+                'nsteps' , output.info.accepted,...
+                'nfailed', output.info.rejected,...
+                'nfevals', output.info.fevals);
+
+            if ~isempty(opts.Events)
+                sol.xe  = output.TE;    sol.ie  = output.IE;
+                sol.ye  = output.YE;    sol.ype = output.YPE;                    
+            end
+
+            % output argument 
+            varargout{1} = sol;
+
+        else
+            % handle varargout                
+            varargout{1} = output.tout;
+            varargout{2} = output.yout;
+            varargout{3} = output.dyout;                
+
+            if ~isempty(opts.Events)
+                varargout{4} = output.TE;
+                varargout{5} = output.YE;
+                varargout{6} = output.YPE;
+                varargout{7} = output.IE;
+                varargout{8} = output.exitflag;
+                varargout{9} = output.info;
+            else
+                varargout{4} = output.exitflag;
+                varargout{5} = output.info;
+            end
+        end
+    end
+
+    % display stats
+    if strcmpi(opts.Stats, 'on')
+        fprintf(1, '\n\n Number of successful steps     : %6d\n'  , output.info.accepted);
+        fprintf(1,     ' Number of rejected steps       : %6d\n'  , output.info.rejected);
+        fprintf(1,     ' Number of evaluations of f(t,y): %6d\n\n', output.info.fevals  );
+        fprintf(1, '%s\n\n', output.info.message);
+    end
+
+end % finalize the integration
 
 
 % Load the coefficients 
