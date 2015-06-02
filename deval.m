@@ -1,4 +1,4 @@
-function [Sxint,Spxint] = deval(sol,xint,idx)
+function [Sxint,Spxint] = deval(sol,xint,varargin)
 %DEVAL  Evaluate the solution of a differential equation problem.
 %   SXINT = DEVAL(SOL,XINT) evaluates the solution of a differential equation
 %   problem at all the entries of the vector XINT. SOL is a structure returned
@@ -91,7 +91,7 @@ function [Sxint,Spxint] = deval(sol,xint,idx)
             
         otherwise
             % call builtin DEVAL()
-            [Sxint, Spxint] = deval_original(sol,xint,idx);
+            [Sxint, Spxint] = deval_original(sol,xint,varargin{:});
             return;
     end
     

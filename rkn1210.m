@@ -695,7 +695,8 @@ function varargout = rkn1210_sparse_output(input)
         % evaluations are not independent.
         for jj = 1:17
             f(:,jj) = input.funfcn( t + h*c(jj), y + h*(c(jj)*dy + h*f*A(:,jj)) ); end
-        output.info.fevals = output.info.fevals + 17;
+        if nargout~=0
+            output.info.fevals = output.info.fevals + 17; end
 
         % check for inf or NaN
         if any(~isfinite(f(:)))
@@ -914,7 +915,8 @@ function varargout = rkn1210_sparse_output(input)
     end % main loop
 
     % Check, prepare & assign outputs
-    [varargout{1:nargout}] = finalize(input, output);
+    if nargout ~= 0 
+        [varargout{1:nargout}] = finalize(input, output); end
 
 end % rkn1210_sparse_output
 
