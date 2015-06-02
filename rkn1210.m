@@ -275,8 +275,9 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
         'varargin', {varargin} ...
         );
     
-    % Check user input 
-    input = check_and_correct_inputs(input);
+    % Check user input and parse options
+    check_inputs(input);
+    input = parse_options(input);
 
                                                              
     % In case of Event/output functions, initialize and/or modify a few extra parameters    
@@ -383,7 +384,7 @@ end % RKN1210 integrator
 
 
 % Check user inputs
-function input = check_and_correct_inputs(input)
+function check_inputs(input)
 
     % Check consistency of user input
     argc = numel(fieldnames(input))-1 + numel(input.varargin);
@@ -411,8 +412,12 @@ function input = check_and_correct_inputs(input)
             [mfilename ':options_not_struct'], ...
             'Options must be given as a structure created with ODESET().');
     end
-    
-    % Process options   
+end
+
+
+% Parse options
+function input = parse_options(input)
+        
     opts = input.options;
     
     opts.Stats       = odeget(opts, 'Stats', 'off');      % display statistics at the end?
@@ -444,7 +449,7 @@ function input = check_and_correct_inputs(input)
     end
     
     input.options = opts;
-     
+    
 end
 
 
@@ -622,9 +627,9 @@ function varargout = rkn1210_sparse_output(input)
         [c, A, B,Bp, Bhat,Bphat] = getCoefficients(); end
 
     % Abbreviations / constants
-    pow  = 1/10;              t0        = input.tspan(1);                
+    pow  = 1/11;              t0        = input.tspan(1);                
     t    = t0;                tfinal    = input.tspan(end);
-    y    = input.y0(:);       hmin      = abs(tfinal-t)/1e12;  
+    y    = input.y0(:);       hmin      = 16*eps(t);  
     dy   = input.yp0(:);      f         = input.y0(:)*zeros(1,17);
     opts = input.options;     direction = 1 - 2*(tfinal < t0);
 
@@ -684,10 +689,14 @@ function varargout = rkn1210_sparse_output(input)
 
     % The main loop
     while (abs(t-tfinal) > 0)
-
-        % take care of final step
+    
+        % Minimum stepsize is a constant relative numerical distance 
+        % from the current time.
+        hmin = direction*16*eps(t);
+        
+        % Take care of final step
         if ( direction*(t+h) > direction*tfinal )
-            h = direction*max(hmin, abs(t-tfinal)); end
+            h = direction*norm([hmin t-tfinal],'inf'); end
 
         % Compute the second-derivative
         % NOTE: 'Vectorized' in ODESET() has no use; we need the UPDATED
