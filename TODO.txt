@@ -1,6 +1,17 @@
-OutputFcn behaves differently from that of ode45 
-add support for string functions with feval/varargin{:}
-create custom deval() which extends built-in version
-Strategy for dense output should be different; use the interpolating polynomials 
-implement custom odextend()
+NEW: 
+- add support for string functions with feval/varargin{:}
+
+- adjust DEMO to check Hamiltonian (compare to symplectic method) 
+- functionalize Output/Event functions 
+- port to C 
+
+CHANGE: 
+- OutputFcn behaves differently from that of ode45 
+
+- create custom deval() which extends built-in version
+
+- Strategy for dense output should be different; use the interpolating polynomials 
+
+- Also use the dense routine for event location 
+- implement custom odextend()
 
