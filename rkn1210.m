@@ -152,7 +152,7 @@ function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 %
 % If you find this work useful and want to show your appreciation, please
 % consider <a
-% href="matlab:web('https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N')">making a donation</a>.
+% href="matlab:web('https://www.paypal.me/RodyO/3.5')">making a donation</a>.
 %
 % See also ODE45, ODE113, ODE86, RKN86, ODEGBS, ODESET, DEVAL, ODEXTEND.
 
@@ -256,7 +256,7 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
 
 
 % If you find this work useful and want to show your appreciation:
-% https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6G3S5UYM7HJ3N
+% https://www.paypal.me/RodyO/3.5
 
 
     %% Initialize
@@ -456,7 +456,7 @@ end
 % Efficiently grow arrays 
 function output = grow_arrays(output)
     
-    % First call - initialize all arrays. Assign about 5MB
+    % First call - initialize all arrays. Assign about 0.5 MB
     if numel(output.tout) == 1
         
         % With M the number of elements in y0 and N the (unknown) number 
@@ -476,11 +476,11 @@ function output = grow_arrays(output)
         % arrays have already been initialized, and using 8 bytes per double, 
         % we get
         %
-        %       8 * 3*(N+1)*(M+1) = 5e6
-        % -->                   N = 5e6/24/(M+1) - 1
+        %       8 * 3*(N+1)*(M+1) = Ye6
+        % -->                   N = Ye6/24/(M+1) - 1
         %
         M = size(output.yout,2);
-        N = floor(5e6/24/(M+1) - 1);
+        N = max(100, floor(5e5/24/(M+1) - 1));
         
         % Generate data placeholders 
         nans   = NaN(N,1);
