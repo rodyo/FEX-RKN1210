@@ -20,6 +20,15 @@ function rkn1210_DEMO
 % If you find this work useful and want to show your appreciation:
 % https://www.paypal.me/RodyO/3.5
 
+% If you want to cite this work in an academic paper, please use
+% the following template:
+% 
+% Rody Oldenhuis, orcid.org/0000-0002-3162-3660. "RKN1210" <version>,
+% <date you last used it>. MATLAB implementation of an embedded 12/10th order 
+% Runge-Kutta-Nyström integrator for second-order ordinary differential equations.
+% https://nl.mathworks.com/matlabcentral/fileexchange/25291-rkn1210
+
+
     %% Initialize
     
     % optimize figure window sizes

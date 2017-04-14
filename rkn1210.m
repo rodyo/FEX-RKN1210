@@ -213,11 +213,13 @@ These are also available in any format on request to these authors.
 %}
 
 
-% How to cite this work
+% If you want to cite this work in an academic paper, please use
+% the following template:
 %{
-R.P.S. Oldenhuis, "MATLAB implementation of an embedded 12/10th order Runge-Kutta-Nyström 
-integrator for second-order ordinary differential equations", May 2015. Permanent link: 
-http://www.mathworks.com/matlabcentral/fileexchange/25291.
+Rody Oldenhuis, orcid.org/0000-0002-3162-3660. "RKN1210" <version>,
+<date you last used it>. MATLAB implementation of an embedded 12/10th order 
+Runge-Kutta-Nyström integrator for second-order ordinary differential equations.
+https://nl.mathworks.com/matlabcentral/fileexchange/25291-rkn1210
 %}
 
 
