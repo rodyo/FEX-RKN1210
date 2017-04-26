@@ -1,7 +1,7 @@
 function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 % RKN1210       12th/10th order Runge-Kutta-Nyström integrator
 %
-% RKN1210() is a 12th/10th order numerical integrator for second-order 
+% RKN1210() is a 12th/10th order numerical integrator for second-order
 % ordinary differential equations of the form
 %
 %   y'' = f(t, y)                     (1)
@@ -11,10 +11,10 @@ function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 %   y (t0) = y0                       (2)
 %   y'(t0) = yp0
 %
-% This second-order ODE is integrated with a Runge-Kutta-Nyström method, 
-% with 17 function evaluations per step. The RKN-class of integrators is 
-% especially suited for this purpose, since compared to a classic 
-% Runge-Kutta integration scheme, the same accuracy can be obtained with 
+% This second-order ODE is integrated with a Runge-Kutta-Nyström method,
+% with 17 function evaluations per step. The RKN-class of integrators is
+% especially suited for this purpose, since compared to a classic
+% Runge-Kutta integration scheme, the same accuracy can be obtained with
 % about half the number of function evaluations.
 %
 % This RKN12(10) method is a very high-order method, to be used in problems
@@ -24,7 +24,7 @@ function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 % ODE's of the form (1) than multi-step or even extrapolation methods
 % capable of the same accuracy.
 %
-% RKN1210()'s interface is very similar to that of MATLAB's ODE-integrator 
+% RKN1210()'s interface is very similar to that of MATLAB's ODE-integrator
 % suite:
 %
 % USAGE:
@@ -58,8 +58,8 @@ function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 %            of elements.
 %
 %  options - options structure, created with ODESET(). Used options are
-%            NormControl, MaxStep, InitialStep, AbsTol, Stats, Event, 
-%            OutputFcn, OutputSel, and Refine. See the help for ODESET() 
+%            NormControl, MaxStep, InitialStep, AbsTol, Stats, Event,
+%            OutputFcn, OutputSel, and Refine. See the help for ODESET()
 %            for more information.
 %
 % How to use Event and/or Output functions is described in the documentation
@@ -157,7 +157,7 @@ function varargout = rkn1210(funfcn, tspan, y0, yp0, options, varargin)
 % See also ODE45, ODE113, ODE86, RKN86, ODEGBS, ODESET, DEVAL, ODEXTEND.
 
 
-% Licence information 
+% Licence information
 %{
 Copyright (c) 2015, Rody Oldenhuis
 All rights reserved.
@@ -217,7 +217,7 @@ These are also available in any format on request to these authors.
 % the following template:
 %{
 Rody Oldenhuis, orcid.org/0000-0002-3162-3660. "RKN1210" <version>,
-<date you last used it>. MATLAB implementation of an embedded 12/10th order 
+<date you last used it>. MATLAB implementation of an embedded 12/10th order
 Runge-Kutta-Nyström integrator for second-order ordinary differential equations.
 https://nl.mathworks.com/matlabcentral/fileexchange/25291-rkn1210
 %}
@@ -232,27 +232,44 @@ https://nl.mathworks.com/matlabcentral/fileexchange/25291-rkn1210
 clc
 
 % Equations of motion for a circular orbit in 2D
-f1 = @(t, y) -y/sqrt(y'*y)^3;
-f2 = @(t, y) [y(3:4); -y(1:2)/sqrt(y(1:2).'*y(1:2))^3];
+f1 = @(t,y) -y/sqrt(y'*y)^3;
+f2 = @(t,y) [y(3:4)
+             -y(1:2)/sqrt(y(1:2).'*y(1:2))^3];
+         
+tspan = [0 1e3];
+r0    = [1; 0];
+v0    = [0; 1];
 
 % RKN1210 with moderate accuracy setting
 disp('RKN1210, with AbsTol = 1e-6, RelTol = 1e-3')
 options = odeset('AbsTol', 1e-6, 'RelTol', 1e-3);
-tic, [t1,y1] = rkn1210(f1, [0 1000], [1; 0], [0; 1], options); toc
-fprintf(1, 'Maximum absolute error: %g\n',...
-    max( (y1(:,1)-cos(t1)).^2 + (y1(:,2)-sin(t1)).^2 ));
-fprintf(1, 'Number of function evaluations: %d\n', ...
-    numel(t1));
 
+tic
+[t1,y1,~,~, output] = rkn1210(f1, tspan, r0, v0, options); 
+
+toc
+
+fprintf(1, 'Maximum absolute error: %g\n',...
+        max( (y1(:,1)-cos(t1)).^2 + (y1(:,2)-sin(t1)).^2 ));
+fprintf(1, 'Number of function evaluations: %d\n', ...
+        output.fevals);
+ 
 % This is how much ODE113 will have to be tuned to achieve similar accuracy
 fprintf('\n\n')
 disp('Compare with ODE113 with AbsTol = RelTol = 8e-9:')
-options = odeset('RelTol',8e-9, 'AbsTol',8e-9);
-tic, [t2,y2] = ode113(f2, [0, 1000], [1; 0; 0; 1], options); toc
+options = odeset('RelTol',8e-9, 'AbsTol',8.132e-9);
+
+tic
+sol = ode113(f2, tspan, [r0; v0], options);
+t2 = sol.x.';
+y2 = sol.y';
+toc
+
 fprintf(1, 'Maximum absolute error: %g\n',...
-    max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 ));
+        max( (y2(:,1)-cos(t2)).^2 + (y2(:,2)-sin(t2)).^2 ));
 fprintf(1, 'Number of function evaluations: %d\n', ...
-    numel(t2));
+        sol.stats.nfevals);
+
 %}
 
 
@@ -262,46 +279,43 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
 
 
     %% Initialize
-    
+
     % Create structures to pass data around more easily
-    
+
     if (nargin < 5)
-        options = odeset; end      
-    
-    input = struct(...
-        'funfcn'  , funfcn,...
-        'tspan'   , tspan,...
-        'y0'      , y0,...
-        'yp0'     , yp0,...
-        'options' , options, ...
-        'varargin', {varargin} ...
-        );
-    
+        options = odeset; end
+
+    input = struct('funfcn'  , funfcn,...
+                   'tspan'   , tspan,...
+                   'y0'      , y0,...
+                   'yp0'     , yp0,...
+                   'options' , options, ...
+                   'varargin', {varargin} );
+
     % Check user input and parse options
     check_inputs(input);
     input = parse_options(input);
 
-                                                             
-    % In case of Event/output functions, initialize and/or modify a few extra parameters    
+
+    % In case of Event/output functions, initialize and/or modify a few extra parameters
     opts = input.options;
-    
+
     if ~isempty(opts.Events)
-        
+
         % cast into cell-array if only one function is given (easier later on)
         if isa(opts.Events, 'function_handle')
             opts.Events = {opts.Events}; end
-        
+
         % Init event function values
         input.previous_event_values = NaN(numel(opts.Events),1);
-        
+
         % Check if all are indeed function handles
         for ii = 1:numel(opts.Events)
-            if isempty(opts.Events{ii}) || ~isa(opts.Events{ii}, 'function_handle')
-                error([mfilename ':event_not_function_handles'],...
-                    ['Unsupported class for event function received; event %d is of class ',...
-                    '''%s''.\n%s only supports function handles.'], ...
-                    ii, class(opts.Events{ii}), upper(mfilename));
-            end
+            assert(~isempty(opts.Events{ii}) && isa(opts.Events{ii}, 'function_handle'),...
+                  [mfilename ':event_not_function_handles'], [...
+                  'Unsupported class for event function received; event %d ',...
+                  'is of class ''%s''.\n%s only supports function handles.'],...
+                  ii, class(opts.Events{ii}), upper(mfilename));            
         end
 
         % Initialize TE (event times), YE (event solutions) YPE (event
@@ -316,10 +330,9 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
                     yp0);
 
             catch ME
-                ME2 = MException(...
-                    [mfilename ':cannot_evaluate_eventFcn'],...
-                    'Event function #%1d failed to evaluate on initial call.',...
-                    k);
+                ME2 = MException([mfilename ':cannot_evaluate_eventFcn'],...
+                                 'Event function #%1d failed to evaluate on initial call.',...
+                                 k);
                 throw(addCause(ME2,ME));
 
             end
@@ -328,11 +341,11 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
     end
 
     if ~isempty(opts.OutputFcn)
-        
+
         % Cast into cell-array if only one function is given (easier later on)
         if isa(opts.OutputFcn, 'function_handle')
             opts.OutputFcn = {opts.OutputFcn}; end
-        
+
         % WHICH elements should be passed to the output function?
         opts.OutputSel = odeget(opts, 'OutputSel', 1:numel(y0));
         % adjust the number of points passed to the output functions by this factor
@@ -340,15 +353,15 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
 
         % 'init' phase
         for k = 1:numel(opts.OutputFcn)
-            
+
             % Check if all are indeed function handles
-            if isempty(opts.OutputFcn{k}) || ~isa(opts.OutputFcn{k}, 'function_handle')
-                error([mfilename ':output_not_function_handles'],...
-                    ['Unsupported class for output function received; output function %d is of class ''%s''.\n',...
-                    '%s only supports function handles.'],...
-                    k, class(opts.OutputFcn{k}), upper(mfilename));
-            end
-            
+            assert(~isempty(opts.OutputFcn{k}) && isa(opts.OutputFcn{k}, 'function_handle'),...
+                   [mfilename ':output_not_function_handles'], [...
+                   'Unsupported class for output function received; output ',...
+                   'function %d is of class ''%s''.\n%s only supports function ',...
+                   'handles.'],...
+                    k, class(opts.OutputFcn{k}), upper(mfilename));           
+
             % call each output function with 'init' flag. Also check whether
             % the user-provided output function evaluates
             try
@@ -359,29 +372,28 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
                     'init');
 
             catch ME
-                ME2 = MException(...
-                    [mfilename ':OutputFcn_doesnt_evaluate'],...
-                    'Output function #%d failed to evaluate on initial call.',...
-                    k);
+                ME2 = MException([mfilename ':OutputFcn_doesnt_evaluate'],...
+                                 'Output function #%d failed to evaluate on initial call.',...
+                                 k);
                 throw(addCause(ME2,ME));
 
             end
         end
     end
-    
+
     input.options = opts;
-    
-    
+
+
     %% Perform integration
 
     % Use dense output routines if [tspan] has more than two elements
-    % and the user does not intend to work with deval() 
+    % and the user does not intend to work with deval()
     if (numel(tspan) > 2 && nargout ~= 1)
         [varargout{1:nargout}] = rkn1210_dense_output(input);
-    else 
+    else
         [varargout{1:nargout}] = rkn1210_sparse_output(input);
     end
-    
+
 end % RKN1210 integrator
 
 
@@ -390,38 +402,38 @@ function check_inputs(input)
 
     % Check consistency of user input
     argc = numel(fieldnames(input))-1 + numel(input.varargin);
-    
+
     assert(argc >= 4 && argc <= 5,...
-        '%s requires either 4 or 5 input arguments.',...
-        upper(mfilename));
-    assert( isa(input.funfcn, 'function_handle'),...
-        [mfilename ':funfcn_isnt_a_function'], ...
-        'Second derivative f(t,y) must be given as function handle.');
-    assert( ~isempty(input.tspan) && numel(input.tspan) >= 2,...
-        [mfilename ':tspan_empty'],...
-        'Time interval [tspan] must contain at least 2 values.');
-    assert( all(diff(input.tspan) ~= 0),...
-        [mfilename ':tspan_dont_span'],...
-        'Values in [tspan] must all span a non-zero interval.');
-    assert( all(diff(input.tspan) > 0) || all(diff(input.tspan) < 0), ...
-        [mfilename ':tspan_must_increase'],...
-        'The entries in tspan must be monotonically increasing or decreasing.');
-    assert( numel(input.y0) == numel(input.yp0),...
-        [mfilename ':initial_values_disagree'], ...
-        'Initial values [y0] and [yp0] must contain the same number of elements.');
+           '%s requires either 4 or 5 input arguments.',...
+           upper(mfilename));
+    assert(isa(input.funfcn, 'function_handle'),...
+           [mfilename ':funfcn_isnt_a_function'], ...
+           'Second derivative f(t,y) must be given as function handle.');
+    assert(~isempty(input.tspan) && numel(input.tspan) >= 2,...
+           [mfilename ':tspan_empty'],...
+           'Time interval [tspan] must contain at least 2 values.');
+    assert(all(diff(input.tspan) ~= 0),...
+           [mfilename ':tspan_dont_span'],...
+           'Values in [tspan] must all span a non-zero interval.');
+    assert(all(diff(input.tspan) > 0) || all(diff(input.tspan) < 0), ...
+           [mfilename ':tspan_must_increase'],...
+           'The entries in tspan must be monotonically increasing or decreasing.');
+    assert(numel(input.y0) == numel(input.yp0),...
+           [mfilename ':initial_values_disagree'], ...
+           'Initial values [y0] and [yp0] must contain the same number of elements.');
     if argc == 5
-        assert( isstruct(input.options),...
-            [mfilename ':options_not_struct'], ...
-            'Options must be given as a structure created with ODESET().');
+        assert(isstruct(input.options),...
+               [mfilename ':options_not_struct'], ...
+               'Options must be given as a structure created with ODESET().');
     end
 end
 
 
 % Parse options
 function input = parse_options(input)
-        
+
     opts = input.options;
-    
+
     opts.Stats       = odeget(opts, 'Stats', 'off');      % display statistics at the end?
     opts.AbsTol      = odeget(opts, 'AbsTol', 1e-14);     % Absolute tolerance
     opts.RelTol      = odeget(opts, 'RelTol', 1e-7);      % Relative tolerance
@@ -429,42 +441,42 @@ function input = parse_options(input)
     opts.InitialStep = odeget(opts, 'InitialStep');       % default determined later
     opts.Events      = odeget(opts, 'Events', []);        % defaults to no eventfunctions
     opts.OutputFcn   = odeget(opts, 'OutputFcn', []);     % defaults to no output functions
-    opts.NormControl = odeget(opts, 'NormControl', 'off');% use norm of solution rather than 
-                                
+    opts.NormControl = odeget(opts, 'NormControl', 'off');% use norm of solution rather than
+
     % Some obvious truths
     opts.AbsTol = abs(opts.AbsTol);
     opts.RelTol = abs(opts.RelTol);
     direction = 1 - 2*(input.tspan(end) < input.tspan(1));
     if ~isempty(opts.InitialStep) && direction*opts.InitialStep < 0
         warning([mfilename ':initialstep_wrong_direction'],...
-            ['The sign of the initial step disagrees with the integration ',...
-            'direction implied by argument tspan; setting the sign of the ',...
-            'initial step equal to the implied direction ']);
+                ['The sign of the initial step disagrees with the integration ',...
+                'direction implied by argument tspan; setting the sign of the ',...
+                'initial step equal to the implied direction ']);
         opts.InitialStep = direction * abs(opts.InitialStep);
     end
     if direction*opts.MaxStep < 0
         warning([mfilename ':maxstep_wrong_direction'],...
-            ['The sign of the maximum step disagrees with the integration ',...
-            'direction implied by the argument tspan; setting the sign of the ',...
-            'maximum step equal to the implied direction ']);
+                ['The sign of the maximum step disagrees with the integration ',...
+                'direction implied by the argument tspan; setting the sign of the ',...
+                'maximum step equal to the implied direction ']);
         opts.MaxStep = sign(opts.InitialStep)* abs(opts.MaxStep);
     end
-    
+
     input.options = opts;
-    
+
 end
 
 
-% Efficiently grow arrays 
+% Efficiently grow arrays
 function output = grow_arrays(output)
-    
+
     % First call - initialize all arrays. Assign about 0.5 MB
     if numel(output.tout) == 1
-        
-        % With M the number of elements in y0 and N the (unknown) number 
-        % of elements to be assigned to each of the output arrays, we need 
-        % to assign 
-        % 
+
+        % With M the number of elements in y0 and N the (unknown) number
+        % of elements to be assigned to each of the output arrays, we need
+        % to assign
+        %
         %     N (tout)
         %   M*N (yout)
         %   M*N (dyout)
@@ -473,9 +485,9 @@ function output = grow_arrays(output)
         %   M*N (info.d2ydt2d)
         % _______________________+
         % 3*N + 3*M*N = 3*N*(M+1)
-        % 
+        %
         % If this is to be Y MB, and knowing that the first entries of all
-        % arrays have already been initialized, and using 8 bytes per double, 
+        % arrays have already been initialized, and using 8 bytes per double,
         % we get
         %
         %       8 * 3*(N+1)*(M+1) = Ye6
@@ -483,26 +495,25 @@ function output = grow_arrays(output)
         %
         M = size(output.yout,2);
         N = max(100, floor(5e5/24/(M+1) - 1));
-        
-        % Generate data placeholders 
+
+        % Generate data placeholders
         nans   = NaN(N,1);
         nans_y = NaN(N,M);
-        
-        
+
     % Subsequent calls -- grow the arrays by constant factor (ensures
     % optimum memory complexity)
     else
-        
+
         % Growth factor
         K = 1.2;
-        
-        % Generate data placeholders 
+
+        % Generate data placeholders
         growth = ceil((K-1)*numel(output.tout));
         nans   = NaN(growth,1);
         nans_y = NaN(growth,size(output.yout,2));
 
     end
-    
+
     % Grow the input arrays
     % NOTE: (Rody Oldenhuis) since MATLAB uses lazy copy-on-write, the
     % biggest performance hit (second only to the derivative function)
@@ -512,7 +523,7 @@ function output = grow_arrays(output)
     output.tout  = [output.tout;  nans];
     output.yout  = [output.yout;  nans_y];
     output.dyout = [output.dyout; nans_y];
-    
+
     output.info.estimated_error = [output.info.estimated_error; nans  ];
     output.info.stepsize        = [output.info.stepsize;        nans  ];
     output.info.d2ydt2          = [output.info.d2ydt2;          nans_y];
@@ -528,13 +539,13 @@ function varargout = rkn1210_dense_output(input)
     nans   = NaN(numel(input.tspan)-1, 1);
     nans_y = NaN(numel(input.tspan)-1, numel( input.y0));
 
-    output.tout  = input.tspan(:);      
+    output.tout  = input.tspan(:);
     output.yout  = [ input.y0(:).'; nans_y];
     output.dyout = [input.yp0(:).'; nans_y];
 
     output.info.fevals   = 0;   output.info.stepsize        = nans;
     output.info.rejected = 0;   output.info.estimated_error = nans;
-    output.info.accepted = 0; 
+    output.info.accepted = 0;
 
     % call this function as many times as there are times in [tspan]
     for tn = 1:numel(input.tspan)-1
@@ -558,14 +569,14 @@ function varargout = rkn1210_dense_output(input)
             'InitialStep', infoI.stepsize(max(1,end-1)));
 
         % Append the solutions
-        output.yout (tn+1,:) =  youtI(end, :); 
-        output.dyout(tn+1,:) = dyoutI(end, :); 
+        output.yout (tn+1,:) =  youtI(end, :);
+        output.dyout(tn+1,:) = dyoutI(end, :);
         if ~isempty(input.options.Events)
-            output.TE (tn+1,:) = TEI;   output.IEI (tn+1,:) =  IEI; 
-            output.YEI(tn+1,:) = YEI;   output.DYEI(tn+1,:) = DYEI; 
+            output.TE (tn+1,:) = TEI;   output.IEI (tn+1,:) =  IEI;
+            output.YEI(tn+1,:) = YEI;   output.DYEI(tn+1,:) = DYEI;
         end
 
-        % process Stats            
+        % process Stats
         output.info.fevals    =  output.info.fevals   + infoI.fevals;
         output.info.rejected  =  output.info.rejected + infoI.rejected;
         output.info.accepted  =  output.info.accepted + infoI.accepted;
@@ -575,8 +586,8 @@ function varargout = rkn1210_dense_output(input)
 
         % evaluate any output functions at each [t] in [tspan]
         %{
-        % NOTE: (Rody Oldenhuis) ...why is this useful? -> check if this is how 
-        % ODEXX does it             
+        % NOTE: (Rody Oldenhuis) ...why is this useful? -> check if this is how
+        % ODEXX does it
         if ~isempty(options.OutputFcn)
 
             % evaluate all functions
@@ -590,10 +601,9 @@ function varargout = rkn1210_dense_output(input)
                         []);
 
                 catch ME
-                    ME2 = MException(...
-                        [mfilename ':OutputFcn_failure_integration'],...
-                        'Output function #%1d failed to evaluate during integration.',...
-                        fk);
+                    ME2 = MException([mfilename ':OutputFcn_failure_integration'],...
+                                     'Output function #%1d failed to evaluate during integration.',...
+                                     fk);
                     throw(addCause(ME2, ME));
                 end
             end
@@ -622,16 +632,16 @@ end
 % Nominal use case: sparse output
 function varargout = rkn1210_sparse_output(input)
 
-    % Load coefficients (and prevent having to load them 
+    % Load coefficients (and prevent having to load them
     % every time the function is called)
     persistent c A B Bp Bhat Bphat
     if isempty(c)
         [c, A, B,Bp, Bhat,Bphat] = getCoefficients(); end
-
+    
     % Abbreviations / constants
-    pow  = 1/11;              t0        = input.tspan(1);                
+    pow  = 1/11;              t0        = input.tspan(1);
     t    = t0;                tfinal    = input.tspan(end);
-    y    = input.y0(:);       hmin      = 16*eps(t);  
+    y    = input.y0(:);       hmin      = 16*eps(t);
     dy   = input.yp0(:);      f         = input.y0(:)*zeros(1,17);
     opts = input.options;     direction = 1 - 2*(tfinal < t0);
 
@@ -640,23 +650,23 @@ function varargout = rkn1210_sparse_output(input)
 
         % Integration main output
         output.tout  = t0;
-        output.yout  = input.y0(:).';           
+        output.yout  = input.y0(:).';
         output.dyout = input.yp0(:).';
         output.index = 1;
 
-        % Algorithm exitstatus 
-        output.exitflag = 0;            
+        % Algorithm exitstatus
+        output.exitflag = 0;
 
-        % Detailed algorithm info 
+        % Detailed algorithm info
         output.info.stepsize        = [];    output.info.fevals   = 1; % (see below)
         output.info.rejected        = 0;     output.info.accepted = 0;
         output.info.d2ydt2          = [];    output.info.message  = 'Integration not started.';
         output.info.estimated_error = [];
 
         % In case of event functions, initialize some more variables
-        if ~isempty(opts.Events)                
+        if ~isempty(opts.Events)
             output.IE = [];   output.YE  = [];
-            output.TE = [];   output.YPE = [];            
+            output.TE = [];   output.YPE = [];
         end
     end
 
@@ -664,16 +674,15 @@ function varargout = rkn1210_sparse_output(input)
     try
        f(:,1) = input.funfcn(t, y);
     catch ME
-       ME2 = MException(...
-           [mfilename ':incorrect_funfcnoutput'], [...
-           'Could not evaluate derivative; derivative function should return ',...
-           'an array with the same number of elements as in the initial values ',...
-           '(%d).'], ...
-           numel(y));
+       ME2 = MException([mfilename ':incorrect_funfcnoutput'], [...
+                        'Could not evaluate derivative; derivative function ',...
+                        'should return an array with the same number of ',...
+                        'elements as in the initial values (%d).'],...
+                        numel(y));
        throw(addCause(ME2,ME));
     end
 
-    % Initialize all variables            
+    % Initialize all variables
     if nargout~=0
         output = grow_arrays(output); end
 
@@ -681,7 +690,7 @@ function varargout = rkn1210_sparse_output(input)
     if isempty(opts.InitialStep)
         % default initial step
         h = opts.AbsTol^pow / max(norm([dy.' f(:,1).'], 'inf'), 1e-4);
-        h = min(opts.MaxStep,max(h,hmin));        
+        h = min(opts.MaxStep,max(h,hmin));
     else
         % user provided initial step
         h = opts.InitialStep;
@@ -690,23 +699,28 @@ function varargout = rkn1210_sparse_output(input)
     % (take care of direction)
     h = direction*abs(h);
 
-    % The main loop
+    % The main loop    
     while (abs(t-tfinal) > 0)
-    
-        % Minimum stepsize is a constant relative numerical distance 
+
+        % Minimum stepsize is a constant relative numerical distance
         % from the current time.
         hmin = direction*16*eps(t);
-        
+
         % Take care of final step
         if ( direction*(t+h) > direction*tfinal )
             h = direction*norm([hmin t-tfinal],'inf'); end
-
+        
         % Compute the second-derivative
         % NOTE: 'Vectorized' in ODESET() has no use; we need the UPDATED
         % function values to calculate the NEW ones, i.e., the function
         % evaluations are not independent.
-        for jj = 1:17
-            f(:,jj) = input.funfcn( t + h*c(jj), y + h*(c(jj)*dy + h*f*A(:,jj)) ); end
+        hc  = h*c;
+        h2A = h*h*A;        
+        for jj = 1:17            
+            f(:,jj) = input.funfcn( t + hc(jj), ...
+                                    y + hc(jj)*dy + f*h2A(:,jj) ); 
+        end
+        
         if nargout~=0
             output.info.fevals = output.info.fevals + 17; end
 
@@ -722,44 +736,39 @@ function varargout = rkn1210_sparse_output(input)
 
         % Pre-compute solutions
         fBhat  = f*Bhat;     new_y  =  y + h*(dy + h*fBhat);
-        fBphat = f*Bphat;    new_dy = dy + h*fBphat;  
+        fBphat = f*Bphat;    new_dy = dy +         h*fBphat;
 
-        % Compute error estimate for this step 
-        if strcmpi(opts.NormControl, 'on') 
+        % Compute error estimate for this step
+        if strcmpi(opts.NormControl, 'on')
 
-            % Estimate the error using norm of solution 
+            % Estimate the error using norm of solution
             delta1 = norm(h*h*(fBhat  - f*B )); % error ~ ||Y - y||
             delta2 = norm(  h*(fBphat - f*Bp)); % error ~ ||dot{Y} - dot{y}||
-            delta  = max(delta1, delta2);       % always use worst case error...
+            delta  = max(delta1, delta2);       % use worst case error
 
-            % ...and compare agains most stringent demand                
-            step_tolerance = min(...
-                opts.AbsTol, ...
-                opts.RelTol * max(norm(new_y), norm(new_dy)) ...
-            );
+            % ...and compare agains most stringent demand
+            step_tolerance = min( opts.AbsTol, ...
+                                  opts.RelTol * max(norm(new_y), norm(new_dy)) );
 
         else
-
-            % Per-component error estimation (usually more stringent) 
+            % Per-component error estimation (usually more stringent)
             delta1 = abs(h*h*(fBhat  - f*B )); % error ~ |Y - y|
             delta2 = abs(  h*(fBphat - f*Bp)); % error ~ |dot{Y} - dot{y}|
-            delta  = max(delta1, delta2);      % always use worst case error...
+            delta  = max(delta1, delta2);      % use worst case error
 
-            % ...and compare agains most stringent demand                
-            step_tolerance = min(...
-                opts.AbsTol, ...
-                opts.RelTol * norm([new_y new_dy], 'inf')...
-            );
+            % ...and compare agains most stringent demand
+            step_tolerance = min( opts.AbsTol, ...
+                                  opts.RelTol * norm([new_y new_dy], 'inf') );
 
         end
 
         % Update the solution only if the error is acceptable
-        if all(delta <= step_tolerance);
-
-            % update the new solution                
+        if all(delta <= step_tolerance)
+            
+            % update the new solution
             t  = t + h;
             y  = new_y;
-            dy = new_dy;   
+            dy = new_dy;
 
             if nargout ~= 0
 
@@ -768,11 +777,11 @@ function varargout = rkn1210_sparse_output(input)
                 % if new values won't fit, first grow the arrays
                 % NOTE: This construction is WAY better than growing the arrays on
                 % EACH iteration; especially for "cheap" integrands, this
-                % construction causes a lot less overhead.                    
-                if output.index > size(output.yout,1)                    
+                % construction causes a lot less overhead.
+                if output.index > size(output.yout,1)
                     output = grow_arrays(output); end
 
-                % insert updated values                
+                % insert updated values
                 output.tout (output.index,:) = t;
                 output.yout (output.index,:) = y.';
                 output.dyout(output.index,:) = dy.';
@@ -798,8 +807,9 @@ function varargout = rkn1210_sparse_output(input)
 
                     try
                         % evaluate function
-                        [value, isterminal, zerodirection] = ...
-                            opts.Events{fk}(t, y, dy);
+                        [value, ...
+                         isterminal,...
+                         zerodirection] = opts.Events{fk}(t, y, dy);
 
                         % look for sign change
                         if (input.previous_event_values(fk)*value < 0)
@@ -824,10 +834,9 @@ function varargout = rkn1210_sparse_output(input)
                                             input, output, fk, value);
 
                                     catch ME
-                                        ME2 = MException(...
-                                            [mfilename ':eventFcn_failure_zero'],...
-                                            'Failed to locate a zero for event function #%1d.',...
-                                            fk);
+                                        ME2 = MException([mfilename ':eventFcn_failure_zero'],...
+                                                         'Failed to locate a zero for event function #%1d.',...
+                                                         fk);
                                         throw(addCause(ME2,ME));
 
                                     end
@@ -839,10 +848,9 @@ function varargout = rkn1210_sparse_output(input)
                         input.previous_event_values(fk) = value;
 
                     catch ME
-                        ME2 = MException(...
-                            [mfilename ':eventFcn_failure_integration'],...
-                            'Event function #%1d failed to evaluate during integration.',...
-                            fk);
+                        ME2 = MException([mfilename ':eventFcn_failure_integration'],...
+                                         'Event function #%1d failed to evaluate during integration.',...
+                                         fk);
                         throw(addCause(ME2,ME));
 
                     end
@@ -866,17 +874,15 @@ function varargout = rkn1210_sparse_output(input)
                     % Evaluate kth output function
                     try
                         % TODO: behavior inconsistent with that of ODE suite
-                        halt = halt | opts.OutputFcn{fk}(...
-                            t, ...
-                            y (opts.OutputSel), ...
-                            dy(opts.OutputSel), ...
-                            []);
+                        halt = halt | opts.OutputFcn{fk}(t, ...
+                                                         y (opts.OutputSel), ...
+                                                         dy(opts.OutputSel), ...
+                                                         []);
 
                     catch ME
-                        ME2 = MException(...
-                            [mfilename ':OutputFcn_failure_integration'],...
-                            'Output function #%1d failed to evaluate during integration.',...
-                            k);
+                        ME2 = MException([mfilename ':OutputFcn_failure_integration'],...
+                                         'Output function #%1d failed to evaluate during integration.',...
+                                         fk);
                         throw(addCause(ME2,ME));
 
                     end
@@ -884,7 +890,7 @@ function varargout = rkn1210_sparse_output(input)
 
                 % Halt integration when requested
                 if halt
-                    output.exitflag = 2;                        
+                    output.exitflag = 2;
                     break;
                 end
 
@@ -897,14 +903,12 @@ function varargout = rkn1210_sparse_output(input)
         end % accept or reject step
 
         % Adjust the step size
-        if (delta == 0)
-            % (we made NO error --> double the step)            
-            h = 2*h; 
-        else        
-            h_new = direction * min(...
-                abs(opts.MaxStep), ...
-                min(0.9*abs(h)*( step_tolerance ./ delta ).^pow) ...
-            );
+        if (all(delta <= eps))
+            % (we made NO error --> double the step)
+            h = 2*h;
+        else 
+            h_new = direction * min( abs(opts.MaxStep), ...
+                                     min(0.9*abs(h)*( step_tolerance ./ delta ).^pow) );
             if h_new~=0
                 h = h_new; end
         end
@@ -912,22 +916,22 @@ function varargout = rkn1210_sparse_output(input)
         % Use [Refine]-option when output functions are present
         if ~isempty(opts.OutputFcn)
             h = h/opts.Refine; end
-        
+
         % Check the new stepsize
         if (abs(h) < abs(hmin))
             output.exitflag = -1;
             % use warning to preserve results thus far
             warning([mfilename ':stepsize_too_small'], ...
-                ['Failure at time t = %6.6e: \n',...
-                'Step size fell below the minimum acceptible value of %6.6d.\n',...
-                'A singularity is likely.'],...
-                t, abs(hmin));
+                    ['Failure at time t = %6.6e: \n',...
+                    'Step size fell below the minimum acceptible value of %6.6d.\n',...
+                    'A singularity is likely.'],...
+                    t, abs(hmin));
         end
 
     end % main loop
 
     % Check, prepare & assign outputs
-    if nargout ~= 0 
+    if nargout ~= 0
         [varargout{1:nargout}] = finalize(input, output); end
 
 end % rkn1210_sparse_output
@@ -936,24 +940,24 @@ end % rkn1210_sparse_output
 % Detect zero passages of event functions
 % using false-position method (derivative-free)
 function output = detect_Event(input, output,which_event, value)
-                                      
+
     % initialize
     y0  = output.yout (output.index-1,:);    side          = 0;
     dy0 = output.dyout(output.index-1,:);    iterations    = 0;
     tt  = output.tout (output.index-1,:);    maxiterations = 1e3;
-    
-    fa = input.previous_event_values(which_event);   
-    ta = tt; 
-    
-    fb = value;                             
+
+    fa = input.previous_event_values(which_event);
+    ta = tt;
+
+    fb = value;
     tb = output.tout(output.index,:);
 
     % prune unnessesary options, and set initial step to current step
     opts = odeset(input.options,...
-        'Events'     , [],...
-        'OutputFcn'  , [],...
-        'Stats'      , 'off',...
-        'InitialStep', output.info.stepsize(output.index-1));
+                  'Events'     , [],...
+                  'OutputFcn'  , [],...
+                  'Stats'      , 'off',...
+                  'InitialStep', output.info.stepsize(output.index-1) );
 
     % Start root finding process
     while (min(abs(fa),abs(fb)) > opts.AbsTol)
@@ -967,11 +971,11 @@ function output = detect_Event(input, output,which_event, value)
         if (ttp == tt || abs(ttp-tt) < eps)
             break, end
 
-        % Direction might have changed 
+        % Direction might have changed
         Zdirection = sign(tt-ttp);
         opts = odeset(opts, ...
-            'InitialStep', Zdirection * abs(opts.InitialStep),...
-            'MaxStep'    , Zdirection * abs(opts.MaxStep));
+                      'InitialStep', Zdirection * abs(opts.InitialStep),...
+                      'MaxStep'    , Zdirection * abs(opts.MaxStep));
 
         % Evaluating the event-function at this new trial location is
         % somewhat complicated. We need to recursively call this
@@ -980,7 +984,7 @@ function output = detect_Event(input, output,which_event, value)
         [DUMMY_, Zyout, Zdyout, DUMMY_, Zoutput] = ...
             rkn1210(input.funfcn, [ttp tt], y0, dy0, opts); %#ok<ASGLU>
 
-        % set new initial step to next-to-last step of previous call            
+        % set new initial step to next-to-last step of previous call
         opts = odeset(opts, ...
             'InitialStep', Zoutput.stepsize(max(1,end-1)));
 
@@ -992,7 +996,7 @@ function output = detect_Event(input, output,which_event, value)
         fval = input.options.Events{which_event}(tt, y0, dy0);
 
         % keep track of number of stats
-        output.info.fevals = output.info.fevals + Zoutput.fevals; 
+        output.info.fevals = output.info.fevals + Zoutput.fevals;
 
         % Compute new step
         if (fb*fval>0)
@@ -1012,12 +1016,11 @@ function output = detect_Event(input, output,which_event, value)
             break;
         end
 
-        % check no. of iterations
-        if (iterations > maxiterations)
-            error([mfilename ':rootfinder_exceeded_max_iterations'],...
-                'Root could not be located within %d iterations.', maxiterations);
-        end
-
+        assert(iterations <= maxiterations,...
+               [mfilename ':rootfinder_exceeded_max_iterations'], ...
+               'Root could not be located within %d iterations.',...
+               maxiterations);
+        
     end % Regula-falsi loop
 
 
@@ -1028,20 +1031,20 @@ function output = detect_Event(input, output,which_event, value)
 
     % The integrand first overshoots the zero; that's how it's
     % detected. We want the zero to be in the final arrays, but we also
-    % want them in the correct order. So, move the overshoot one down, 
+    % want them in the correct order. So, move the overshoot one down,
     % and insert the zero in its place:
 
     output.index = output.index + 1;
     if output.index > size(output.yout,1)
         output = grow_arrays(output); end
 
-    output.yout (output.index  ,:) = output.yout(output.index-1,:);    
+    output.yout (output.index  ,:) = output.yout(output.index-1,:);
     output.yout (output.index-1,:) = y0.';
-    
-    output.dyout(output.index  ,:) = output.dyout(output.index-1,:);        
+
+    output.dyout(output.index  ,:) = output.dyout(output.index-1,:);
     output.dyout(output.index-1,:) = dy0.';
-    
-    output.tout (output.index  ,:) = output.tout(output.index-1,:);        
+
+    output.tout (output.index  ,:) = output.tout(output.index-1,:);
     output.tout (output.index-1,:) = tt;
 
     output.info.stepsize(output.index-1) = tt - output.tout(output.index-1);
@@ -1054,16 +1057,18 @@ function varargout = finalize(input, output)
 
     % Cut off any spurious elements
     if nargout ~= 0
+        
         output.tout  = output.tout (1:output.index,:);
         output.yout  = output.yout (1:output.index,:);
         output.dyout = output.dyout(1:output.index,:);
+        
         if isfield(output.info, 'stepsize');
             output.info.stepsize        = output.info.stepsize(1:output.index-1);
             output.info.estimated_error = output.info.estimated_error(1:output.index-1);
         end
     end
 
-    % Abbreav
+    % Abbrev
     opts = input.options;
 
     % neutral flag means all OK
@@ -1081,10 +1086,9 @@ function varargout = finalize(input, output)
                     'done');
 
             catch ME
-                ME2 = MException(...
-                    [mfilename ':OutputFcn_failure_finalization'],...
-                    'Output function #%1d failed to evaluate during final call.', ...
-                    fk);
+                ME2 = MException([mfilename ':OutputFcn_failure_finalization'],...
+                                 'Output function #%1d failed to evaluate during final call.', ...
+                                  fk);
                 throw(addCause(ME2,ME));
 
             end
@@ -1120,29 +1124,27 @@ function varargout = finalize(input, output)
             sol.yp = output.dyout;
 
             % TODO: strip non-ODEGET options
-            sol.extdata = struct(...
-                'odefun'  , input.funfcn,...
-                'options' , opts,...
-                'varargin', {input.varargin});
+            sol.extdata = struct('odefun'  , input.funfcn,...
+                                 'options' , opts,...
+                                 'varargin', {input.varargin});
 
-            sol.stats = struct(...
-                'nsteps' , output.info.accepted,...
-                'nfailed', output.info.rejected,...
-                'nfevals', output.info.fevals);
+            sol.stats = struct('nsteps' , output.info.accepted,...                
+                               'nfailed', output.info.rejected,...
+                               'nfevals', output.info.fevals);
 
             if ~isempty(opts.Events)
                 sol.xe  = output.TE;    sol.ie  = output.IE;
-                sol.ye  = output.YE;    sol.ype = output.YPE;                    
+                sol.ye  = output.YE;    sol.ype = output.YPE;
             end
 
-            % output argument 
+            % output argument
             varargout{1} = sol;
 
         else
-            % handle varargout                
+            % handle varargout
             varargout{1} = output.tout;
             varargout{2} = output.yout;
-            varargout{3} = output.dyout;                
+            varargout{3} = output.dyout;
 
             if ~isempty(opts.Events)
                 varargout{4} = output.TE;
@@ -1169,27 +1171,27 @@ function varargout = finalize(input, output)
 end % finalize the integration
 
 
-% Load the coefficients 
+% Load the coefficients
 function [c, A, B,Bp, Bhat,Bphat] = getCoefficients()
-    
+
     % c
     c = [0.0e0
-        2.0e-2
-        4.0e-2
-        1.0e-1
-        1.33333333333333333333333333333e-1
-        1.6e-1
-        5.0e-2
-        2.0e-1
-        2.5e-1
-        3.33333333333333333333333333333e-1
-        5.0e-1
-        5.55555555555555555555555555556e-1
-        7.5e-1
-        8.57142857142857142857142857143e-1
-        9.45216222272014340129957427739e-1
-        1.0e0
-        1.0e0];
+         2.0e-2
+         4.0e-2
+         1.0e-1
+         1.33333333333333333333333333333e-1
+         1.6e-1
+         5.0e-2
+         2.0e-1
+         2.5e-1
+         3.33333333333333333333333333333e-1
+         5.0e-1
+         5.55555555555555555555555555556e-1
+         7.5e-1
+         8.57142857142857142857142857143e-1
+         9.45216222272014340129957427739e-1
+         1.0e0
+         1.0e0];
 
     % matrix A is lower triangular. It's easiest to
     % load the coefficients row-by-row:
@@ -1239,112 +1241,112 @@ function [c, A, B,Bp, Bhat,Bphat] = getCoefficients()
                 3.75576906923283379487932641079e-3];
 
     A(10,1:9) = [3.70724106871850081019565530521e-3
-                0.0e0
-                5.08204585455528598076108163479e-3
-                1.17470800217541204473569104943e-3
-                -2.11476299151269914996229766362e-2
-                6.01046369810788081222573525136e-2
-                2.01057347685061881846748708777e-2
-                -2.83507501229335808430366774368e-2
-                1.48795689185819327555905582479e-2];
+                 0.0e0
+                 5.08204585455528598076108163479e-3
+                 1.17470800217541204473569104943e-3
+                 -2.11476299151269914996229766362e-2
+                 6.01046369810788081222573525136e-2
+                 2.01057347685061881846748708777e-2
+                 -2.83507501229335808430366774368e-2
+                 1.48795689185819327555905582479e-2];
 
     A(11,1:10) = [3.51253765607334415311308293052e-2
-                0.0e0
-                -8.61574919513847910340576078545e-3
-                -5.79144805100791652167632252471e-3
-                1.94555482378261584239438810411e0
-                -3.43512386745651359636787167574e0
-                -1.09307011074752217583892572001e-1
-                2.3496383118995166394320161088e0
-                -7.56009408687022978027190729778e-1
-                1.09528972221569264246502018618e-1];
+                  0.0e0
+                  -8.61574919513847910340576078545e-3
+                  -5.79144805100791652167632252471e-3
+                  1.94555482378261584239438810411e0
+                  -3.43512386745651359636787167574e0
+                  -1.09307011074752217583892572001e-1
+                  2.3496383118995166394320161088e0
+                  -7.56009408687022978027190729778e-1
+                  1.09528972221569264246502018618e-1];
 
     A(12,1:11) = [2.05277925374824966509720571672e-2
-                0.0e0
-                -7.28644676448017991778247943149e-3
-                -2.11535560796184024069259562549e-3
-                9.27580796872352224256768033235e-1
-                -1.65228248442573667907302673325e0
-                -2.10795630056865698191914366913e-2
-                1.20653643262078715447708832536e0
-                -4.13714477001066141324662463645e-1
-                9.07987398280965375956795739516e-2
-                5.35555260053398504916870658215e-3];
+                  0.0e0
+                  -7.28644676448017991778247943149e-3
+                  -2.11535560796184024069259562549e-3
+                  9.27580796872352224256768033235e-1
+                  -1.65228248442573667907302673325e0
+                  -2.10795630056865698191914366913e-2
+                  1.20653643262078715447708832536e0
+                  -4.13714477001066141324662463645e-1
+                  9.07987398280965375956795739516e-2
+                  5.35555260053398504916870658215e-3];
 
     A(13,1:12) = [-1.43240788755455150458921091632e-1
-                0.0e0
-                1.25287037730918172778464480231e-2
-                6.82601916396982712868112411737e-3
-                -4.79955539557438726550216254291e0
-                5.69862504395194143379169794156e0
-                7.55343036952364522249444028716e-1
-                -1.27554878582810837175400796542e-1
-                -1.96059260511173843289133255423e0
-                9.18560905663526240976234285341e-1
-                -2.38800855052844310534827013402e-1
-                1.59110813572342155138740170963e-1];
+                  0.0e0
+                  1.25287037730918172778464480231e-2
+                  6.82601916396982712868112411737e-3
+                  -4.79955539557438726550216254291e0
+                  5.69862504395194143379169794156e0
+                  7.55343036952364522249444028716e-1
+                  -1.27554878582810837175400796542e-1
+                  -1.96059260511173843289133255423e0
+                  9.18560905663526240976234285341e-1
+                  -2.38800855052844310534827013402e-1
+                  1.59110813572342155138740170963e-1];
 
     A(14,1:13) = [8.04501920552048948697230778134e-1
-                0.0e0
-                -1.66585270670112451778516268261e-2
-                -2.1415834042629734811731437191e-2
-                1.68272359289624658702009353564e1
-                -1.11728353571760979267882984241e1
-                -3.37715929722632374148856475521e0
-                -1.52433266553608456461817682939e1
-                1.71798357382154165620247684026e1
-                -5.43771923982399464535413738556e0
-                1.38786716183646557551256778839e0
-                -5.92582773265281165347677029181e-1
-                2.96038731712973527961592794552e-2];
+                  0.0e0
+                  -1.66585270670112451778516268261e-2
+                  -2.1415834042629734811731437191e-2
+                  1.68272359289624658702009353564e1
+                  -1.11728353571760979267882984241e1
+                  -3.37715929722632374148856475521e0
+                  -1.52433266553608456461817682939e1
+                  1.71798357382154165620247684026e1
+                  -5.43771923982399464535413738556e0
+                  1.38786716183646557551256778839e0
+                  -5.92582773265281165347677029181e-1
+                  2.96038731712973527961592794552e-2];
 
     A(15,1:14) = [-9.13296766697358082096250482648e-1
-                0.0e0
-                2.41127257578051783924489946102e-3
-                1.76581226938617419820698839226e-2
-                -1.48516497797203838246128557088e1
-                2.15897086700457560030782161561e0
-                3.99791558311787990115282754337e0
-                2.84341518002322318984542514988e1
-                -2.52593643549415984378843352235e1
-                7.7338785423622373655340014114e0
-                -1.8913028948478674610382580129e0
-                1.00148450702247178036685959248e0
-                4.64119959910905190510518247052e-3
-                1.12187550221489570339750499063e-2];
+                  0.0e0
+                  2.41127257578051783924489946102e-3
+                  1.76581226938617419820698839226e-2
+                  -1.48516497797203838246128557088e1
+                  2.15897086700457560030782161561e0
+                  3.99791558311787990115282754337e0
+                  2.84341518002322318984542514988e1
+                  -2.52593643549415984378843352235e1
+                  7.7338785423622373655340014114e0
+                  -1.8913028948478674610382580129e0
+                  1.00148450702247178036685959248e0
+                  4.64119959910905190510518247052e-3
+                  1.12187550221489570339750499063e-2];
 
     A(16,1:15) = [-2.75196297205593938206065227039e-1
-                0.0e0
-                3.66118887791549201342293285553e-2
-                9.7895196882315626246509967162e-3
-                -1.2293062345886210304214726509e1
-                1.42072264539379026942929665966e1
-                1.58664769067895368322481964272e0
-                2.45777353275959454390324346975e0
-                -8.93519369440327190552259086374e0
-                4.37367273161340694839327077512e0
-                -1.83471817654494916304344410264e0
-                1.15920852890614912078083198373e0
-                -1.72902531653839221518003422953e-2
-                1.93259779044607666727649875324e-2
-                5.20444293755499311184926401526e-3];
+                  0.0e0
+                  3.66118887791549201342293285553e-2
+                  9.7895196882315626246509967162e-3
+                  -1.2293062345886210304214726509e1
+                  1.42072264539379026942929665966e1
+                  1.58664769067895368322481964272e0
+                  2.45777353275959454390324346975e0
+                  -8.93519369440327190552259086374e0
+                  4.37367273161340694839327077512e0
+                  -1.83471817654494916304344410264e0
+                  1.15920852890614912078083198373e0
+                  -1.72902531653839221518003422953e-2
+                  1.93259779044607666727649875324e-2
+                  5.20444293755499311184926401526e-3];
 
     A(17,1:16) = [1.30763918474040575879994562983e0
-                0.0e0
-                1.73641091897458418670879991296e-2
-                -1.8544456454265795024362115588e-2
-                1.48115220328677268968478356223e1
-                9.38317630848247090787922177126e0
-                -5.2284261999445422541474024553e0
-                -4.89512805258476508040093482743e1
-                3.82970960343379225625583875836e1
-                -1.05873813369759797091619037505e1
-                2.43323043762262763585119618787e0
-                -1.04534060425754442848652456513e0
-                7.17732095086725945198184857508e-2
-                2.16221097080827826905505320027e-3
-                7.00959575960251423699282781988e-3
-                0.0e0];
+                  0.0e0
+                  1.73641091897458418670879991296e-2
+                  -1.8544456454265795024362115588e-2
+                  1.48115220328677268968478356223e1
+                  9.38317630848247090787922177126e0
+                  -5.2284261999445422541474024553e0
+                  -4.89512805258476508040093482743e1
+                  3.82970960343379225625583875836e1
+                  -1.05873813369759797091619037505e1
+                  2.43323043762262763585119618787e0
+                  -1.04534060425754442848652456513e0
+                  7.17732095086725945198184857508e-2
+                  2.16221097080827826905505320027e-3
+                  7.00959575960251423699282781988e-3
+                  0.0e0];
 
     % this facilitates and speeds up implementation
     A = A.';
@@ -1370,60 +1372,60 @@ function [c, A, B,Bp, Bhat,Bphat] = getCoefficients()
 
     % BprimeHat (high-order b-prime)
     Bphat  = [1.21278685171854149768890395495e-2
-            0.0e0
-            0.0e0
-            0.0e0
-            0.0e0
-            0.0e0
-            9.08394342270407836172412920433e-2
-            3.15683697648393399290429311645e-1
-            -2.63224906576909737811077273181e-1
-            3.04780378618458886213892341513e-1
-            -4.15516161554298332243867109382e-2
-            2.46775609676295306562750285101e-1
-            1.52260530105866022937951487642e-1
-            8.14384816302696075086493964505e-2
-            8.50257119389081128008018326881e-2
-            -9.15518963007796287314100251351e-3
-            2.5e-2];
+             0.0e0
+             0.0e0
+             0.0e0
+             0.0e0
+             0.0e0
+             9.08394342270407836172412920433e-2
+             3.15683697648393399290429311645e-1
+             -2.63224906576909737811077273181e-1
+             3.04780378618458886213892341513e-1
+             -4.15516161554298332243867109382e-2
+             2.46775609676295306562750285101e-1
+             1.52260530105866022937951487642e-1
+             8.14384816302696075086493964505e-2
+             8.50257119389081128008018326881e-2
+             -9.15518963007796287314100251351e-3
+             2.5e-2];
 
     % B (low-order b)
     B = [1.70087019070069917527544646189e-2
-            0.0e0
-            0.0e0
-            0.0e0
-            0.0e0
-            0.0e0
-            7.22593359308314069488600038463e-2
-            3.72026177326753045388210502067e-1
-            -4.01821145009303521439340233863e-1
-            3.35455068301351666696584034896e-1
-            -1.31306501075331808430281840783e-1
-            1.89431906616048652722659836455e-1
-            2.68408020400290479053691655806e-2
-            1.63056656059179238935180933102e-2
-            3.79998835669659456166597387323e-3
-            0.0e0
-            0.0e0];
+         0.0e0
+         0.0e0
+         0.0e0
+         0.0e0
+         0.0e0
+         7.22593359308314069488600038463e-2
+         3.72026177326753045388210502067e-1
+         -4.01821145009303521439340233863e-1
+         3.35455068301351666696584034896e-1
+         -1.31306501075331808430281840783e-1
+         1.89431906616048652722659836455e-1
+         2.68408020400290479053691655806e-2
+         1.63056656059179238935180933102e-2
+         3.79998835669659456166597387323e-3
+         0.0e0
+         0.0e0];
 
     % Bprime (low-order bprime)
     Bp = [1.70087019070069917527544646189e-2
-            0.0e0
-            0.0e0
-            0.0e0
-            0.0e0
-            0.0e0
-            7.60624588745593757356421093119e-2
-            4.65032721658441306735263127583e-1
-            -5.35761526679071361919120311817e-1
-            5.03182602452027500044876052344e-1
-            -2.62613002150663616860563681567e-1
-            4.26221789886109468625984632024e-1
-            1.07363208160116191621476662322e-1
-            1.14139659241425467254626653171e-1
-            6.93633866500486770090602920091e-2
-            2.0e-2
-            0.0e0];
+          0.0e0
+          0.0e0
+          0.0e0
+          0.0e0
+          0.0e0
+          7.60624588745593757356421093119e-2
+          4.65032721658441306735263127583e-1
+          -5.35761526679071361919120311817e-1
+          5.03182602452027500044876052344e-1
+          -2.62613002150663616860563681567e-1
+          4.26221789886109468625984632024e-1
+          1.07363208160116191621476662322e-1
+          1.14139659241425467254626653171e-1
+          6.93633866500486770090602920091e-2
+          2.0e-2
+          0.0e0];
 end
 
 
