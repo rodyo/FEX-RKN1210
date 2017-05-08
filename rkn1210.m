@@ -203,13 +203,17 @@ Based on the code for ODE86 and RKN86, also available on the MATLAB
 FileExchange.
 
 The consruction of RKN12(10) is described in
-High-Order Embedded Runge-Kutta-Nystrom Formulae
+[1] High-Order Embedded Runge-Kutta-Nystrom Formulae
 J. R. DORMAND, M. E. A. EL-MIKKAWY, AND P. J. PRINCE
 IMA Journal of Numerical Analysis (1987) 7, 423-430
 
 Coefficients obtained from
-http://www.tampa.phys.ucl.ac.uk/rmat/test/rknint.f
+[2] http://www.tampa.phys.ucl.ac.uk/rmat/test/rknint.f
 These are also available in any format on request to these authors.
+
+[3] CHEAP ERROR ESTIMATION FOR RUNGE–KUTTA METHODS
+CH. TSITOURAS AND S. N. PAPAKOSTAS
+SIAM J. SCI. COMPUT. Vol. 20, No. 6, pp. 2067–2088 
 %}
 
 
@@ -644,6 +648,8 @@ function varargout = rkn1210_sparse_output(input)
     y    = input.y0(:);       hmin      = 16*eps(t);
     dy   = input.yp0(:);      f         = input.y0(:)*zeros(1,17);
     opts = input.options;     direction = 1 - 2*(tfinal < t0);
+    f1   = 0.8;
+    f2   = 10;
 
     % IO variables
     if nargout ~= 0
@@ -735,15 +741,18 @@ function varargout = rkn1210_sparse_output(input)
         end % non-finite values
 
         % Pre-compute solutions
-        fBhat  = f*Bhat;     new_y  =  y + h*(dy + h*fBhat);
-        fBphat = f*Bphat;    new_dy = dy +         h*fBphat;
-
+        hf      = h*f;
+        hfBhat  = hf*Bhat;     new_y  =  y + h*(dy + hfBhat);
+        hfBphat = hf*Bphat;    new_dy = dy +         hfBphat;
+        hfB     = hf*B;       
+        hfBp    = hf*Bp;      
+        
         % Compute error estimate for this step
         if strcmpi(opts.NormControl, 'on')
 
-            % Estimate the error using norm of solution
-            delta1 = norm(h*h*(fBhat  - f*B )); % error ~ ||Y - y||
-            delta2 = norm(  h*(fBphat - f*Bp)); % error ~ ||dot{Y} - dot{y}||
+            % Estimate the error using norm of solution (usually more stringent)
+            delta1 = norm(h*(hfBhat  - hfB )); % error ~ ||Y - y||
+            delta2 = norm(  (hfBphat - hfBp)); % error ~ ||dot{Y} - dot{y}||
             delta  = max(delta1, delta2);       % use worst case error
 
             % ...and compare agains most stringent demand
@@ -751,17 +760,17 @@ function varargout = rkn1210_sparse_output(input)
                                   opts.RelTol * max(norm(new_y), norm(new_dy)) );
 
         else
-            % Per-component error estimation (usually more stringent)
-            delta1 = abs(h*h*(fBhat  - f*B )); % error ~ |Y - y|
-            delta2 = abs(  h*(fBphat - f*Bp)); % error ~ |dot{Y} - dot{y}|
+            % Per-component error estimation 
+            delta1 = abs(h*(hfBhat  - hfB )); % error ~ |Y - y|
+            delta2 = abs(  (hfBphat - hfBp)); % error ~ |dot{Y} - dot{y}|
             delta  = max(delta1, delta2);      % use worst case error
-
+            
             % ...and compare agains most stringent demand
             step_tolerance = min( opts.AbsTol, ...
-                                  opts.RelTol * norm([new_y new_dy], 'inf') );
-
+                                  opts.RelTol * max(abs(new_y), abs(new_dy)) );
+                              
         end
-
+        
         % Update the solution only if the error is acceptable
         if all(delta <= step_tolerance)
             
@@ -899,16 +908,25 @@ function varargout = rkn1210_sparse_output(input)
         % rejected step: just increase its counter
         else
             output.info.rejected = output.info.rejected + 1;
-
+                                    
         end % accept or reject step
 
         % Adjust the step size
         if (all(delta <= eps))
-            % (we made NO error --> double the step)
-            h = 2*h;
-        else 
-            h_new = direction * min( abs(opts.MaxStep), ...
-                                     min(0.9*abs(h)*( step_tolerance ./ delta ).^pow) );
+            % we made NO error --> p-fold the step
+            h = direction * min( abs(opts.MaxStep), 10*abs(h) );
+        else
+            % [3], equation 3.1+3.2
+            %growth = f1 * (step_tolerance ./ delta).^pow;
+                        
+            % After [3], equation 3.1+3.5 leads to fewer failures            
+            EST    = f2 * abs(h) * delta;            
+            growth = f1 * (step_tolerance ./ EST).^pow;
+            
+            h_new  = direction * min( abs(opts.MaxStep), ...
+                                      max(abs(h).*growth) );
+            
+                           
             if h_new~=0
                 h = h_new; end
         end
