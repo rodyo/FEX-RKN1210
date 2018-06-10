@@ -35,16 +35,14 @@ function [Sxint,Spxint] = deval(sol,xint,varargin)
 
 % Please report bugs and inquiries to:
 %
-% Name       : Rody P.S. Oldenhuis
-% E-mail     : oldenhuis@gmail.com    (personal)
-%              oldenhuis@luxspace.lu  (professional)
-% Affiliation: LuxSpace sàrl
-% Licence    : BSD
+% Name   : Rody P.S. Oldenhuis
+% E-mail : oldenhuis@gmail.com
+% Licence: 2-clause BSD (See Licence.txt)
 
 
 % If you find this work useful, please consider a donation:
 % https://www.paypal.me/RodyO/3.5
-    
+
 
 % FIXME: use interpolating polynomials rather than recursion
 
@@ -62,7 +60,7 @@ function [Sxint,Spxint] = deval(sol,xint,varargin)
         sol  = xint;
         xint = temp;
     end
-    
+
     if isstruct(sol)
         if isfield(sol, 'solver')
             solver = sol.solver;
@@ -80,21 +78,21 @@ function [Sxint,Spxint] = deval(sol,xint,varargin)
     else
         error('MATLAB:deval:NoSolverStruct', ...
             ['The first or second input to DEVAL must be a structure returned by a ',...
-            'differential equation solver.']);        
+            'differential equation solver.']);
     end
-    
-    % Delegate if solver is not RKN1210       
+
+    % Delegate if solver is not RKN1210
     switch solver
-        
+
         %case 'rkn1210'
         %    % TODO: make magic happen
-            
+
         otherwise
             % call builtin DEVAL()
             [Sxint, Spxint] = deval_original(sol,xint,varargin{:});
             return;
     end
-    
+
     % TODO: make MORE magic happen here
-    
+
 end

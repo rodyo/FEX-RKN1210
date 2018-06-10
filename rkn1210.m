@@ -190,10 +190,9 @@ either expressed or implied, of the FreeBSD Project.
 
 % Author
 %{
-Name       : Rody P.S. Oldenhuis
-E-mail     : oldenhuis@gmail.com    (personal)
-             oldenhuis@luxspace.lu  (professional)
-Affiliation: LuxSpace sàrl
+% Name   : Rody P.S. Oldenhuis
+% E-mail : oldenhuis@gmail.com
+% Licence: 2-clause BSD (See Licence.txt)
 %}
 
 
@@ -213,7 +212,7 @@ These are also available in any format on request to these authors.
 
 [3] CHEAP ERROR ESTIMATION FOR RUNGE–KUTTA METHODS
 CH. TSITOURAS AND S. N. PAPAKOSTAS
-SIAM J. SCI. COMPUT. Vol. 20, No. 6, pp. 2067–2088 
+SIAM J. SCI. COMPUT. Vol. 20, No. 6, pp. 2067–2088
 %}
 
 
@@ -239,7 +238,7 @@ clc
 f1 = @(t,y) -y/sqrt(y'*y)^3;
 f2 = @(t,y) [y(3:4)
              -y(1:2)/sqrt(y(1:2).'*y(1:2))^3];
-         
+
 tspan = [0 1e3];
 r0    = [1; 0];
 v0    = [0; 1];
@@ -249,7 +248,7 @@ disp('RKN1210, with AbsTol = 1e-6, RelTol = 1e-3')
 options = odeset('AbsTol', 1e-6, 'RelTol', 1e-3);
 
 tic
-[t1,y1,~,~, output] = rkn1210(f1, tspan, r0, v0, options); 
+[t1,y1,~,~, output] = rkn1210(f1, tspan, r0, v0, options);
 
 toc
 
@@ -257,7 +256,7 @@ fprintf(1, 'Maximum absolute error: %g\n',...
         max( (y1(:,1)-cos(t1)).^2 + (y1(:,2)-sin(t1)).^2 ));
 fprintf(1, 'Number of function evaluations: %d\n', ...
         output.fevals);
- 
+
 % This is how much ODE113 will have to be tuned to achieve similar accuracy
 fprintf('\n\n')
 disp('Compare with ODE113 with AbsTol = RelTol = 8e-9:')
@@ -319,7 +318,7 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
                   [mfilename ':event_not_function_handles'], [...
                   'Unsupported class for event function received; event %d ',...
                   'is of class ''%s''.\n%s only supports function handles.'],...
-                  ii, class(opts.Events{ii}), upper(mfilename));            
+                  ii, class(opts.Events{ii}), upper(mfilename));
         end
 
         % Initialize TE (event times), YE (event solutions) YPE (event
@@ -364,7 +363,7 @@ fprintf(1, 'Number of function evaluations: %d\n', ...
                    'Unsupported class for output function received; output ',...
                    'function %d is of class ''%s''.\n%s only supports function ',...
                    'handles.'],...
-                    k, class(opts.OutputFcn{k}), upper(mfilename));           
+                    k, class(opts.OutputFcn{k}), upper(mfilename));
 
             % call each output function with 'init' flag. Also check whether
             % the user-provided output function evaluates
@@ -641,7 +640,7 @@ function varargout = rkn1210_sparse_output(input)
     persistent c A B Bp Bhat Bphat
     if isempty(c)
         [c, A, B,Bp, Bhat,Bphat] = getCoefficients(); end
-    
+
     % Abbreviations / constants
     pow  = 1/11;              t0        = input.tspan(1);
     t    = t0;                tfinal    = input.tspan(end);
@@ -705,7 +704,7 @@ function varargout = rkn1210_sparse_output(input)
     % (take care of direction)
     h = direction*abs(h);
 
-    % The main loop    
+    % The main loop
     while (abs(t-tfinal) > 0)
 
         % Minimum stepsize is a constant relative numerical distance
@@ -715,18 +714,18 @@ function varargout = rkn1210_sparse_output(input)
         % Take care of final step
         if ( direction*(t+h) > direction*tfinal )
             h = direction*norm([hmin t-tfinal],'inf'); end
-        
+
         % Compute the second-derivative
         % NOTE: 'Vectorized' in ODESET() has no use; we need the UPDATED
         % function values to calculate the NEW ones, i.e., the function
         % evaluations are not independent.
         hc  = h*c;
-        h2A = h*h*A;        
-        for jj = 1:17            
+        h2A = h*h*A;
+        for jj = 1:17
             f(:,jj) = input.funfcn( t + hc(jj), ...
-                                    y + hc(jj)*dy + f*h2A(:,jj) ); 
+                                    y + hc(jj)*dy + f*h2A(:,jj) );
         end
-        
+
         if nargout~=0
             output.info.fevals = output.info.fevals + 17; end
 
@@ -744,9 +743,9 @@ function varargout = rkn1210_sparse_output(input)
         hf      = h*f;
         hfBhat  = hf*Bhat;     new_y  =  y + h*(dy + hfBhat);
         hfBphat = hf*Bphat;    new_dy = dy +         hfBphat;
-        hfB     = hf*B;       
-        hfBp    = hf*Bp;      
-        
+        hfB     = hf*B;
+        hfBp    = hf*Bp;
+
         % Compute error estimate for this step
         if strcmpi(opts.NormControl, 'on')
 
@@ -760,20 +759,20 @@ function varargout = rkn1210_sparse_output(input)
                                   opts.RelTol * max(norm(new_y), norm(new_dy)) );
 
         else
-            % Per-component error estimation 
+            % Per-component error estimation
             delta1 = abs(h*(hfBhat  - hfB )); % error ~ |Y - y|
             delta2 = abs(  (hfBphat - hfBp)); % error ~ |dot{Y} - dot{y}|
             delta  = max(delta1, delta2);      % use worst case error
-            
+
             % ...and compare agains most stringent demand
             step_tolerance = min( opts.AbsTol, ...
                                   opts.RelTol * max(abs(new_y), abs(new_dy)) );
-                              
+
         end
-        
+
         % Update the solution only if the error is acceptable
         if all(delta <= step_tolerance)
-            
+
             % update the new solution
             t  = t + h;
             y  = new_y;
@@ -908,7 +907,7 @@ function varargout = rkn1210_sparse_output(input)
         % rejected step: just increase its counter
         else
             output.info.rejected = output.info.rejected + 1;
-                                    
+
         end % accept or reject step
 
         % Adjust the step size
@@ -918,15 +917,15 @@ function varargout = rkn1210_sparse_output(input)
         else
             % [3], equation 3.1+3.2
             %growth = f1 * (step_tolerance ./ delta).^pow;
-                        
-            % After [3], equation 3.1+3.5 leads to fewer failures            
-            EST    = f2 * abs(h) * delta;            
+
+            % After [3], equation 3.1+3.5 leads to fewer failures
+            EST    = f2 * abs(h) * delta;
             growth = f1 * (step_tolerance ./ EST).^pow;
-            
+
             h_new  = direction * min( abs(opts.MaxStep), ...
                                       max(abs(h).*growth) );
-            
-                           
+
+
             if h_new~=0
                 h = h_new; end
         end
@@ -1038,7 +1037,7 @@ function output = detect_Event(input, output,which_event, value)
                [mfilename ':rootfinder_exceeded_max_iterations'], ...
                'Root could not be located within %d iterations.',...
                maxiterations);
-        
+
     end % Regula-falsi loop
 
 
@@ -1075,11 +1074,11 @@ function varargout = finalize(input, output)
 
     % Cut off any spurious elements
     if nargout ~= 0
-        
+
         output.tout  = output.tout (1:output.index,:);
         output.yout  = output.yout (1:output.index,:);
         output.dyout = output.dyout(1:output.index,:);
-        
+
         if isfield(output.info, 'stepsize');
             output.info.stepsize        = output.info.stepsize(1:output.index-1);
             output.info.estimated_error = output.info.estimated_error(1:output.index-1);
@@ -1146,7 +1145,7 @@ function varargout = finalize(input, output)
                                  'options' , opts,...
                                  'varargin', {input.varargin});
 
-            sol.stats = struct('nsteps' , output.info.accepted,...                
+            sol.stats = struct('nsteps' , output.info.accepted,...
                                'nfailed', output.info.rejected,...
                                'nfevals', output.info.fevals);
 

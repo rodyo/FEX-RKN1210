@@ -1,48 +1,43 @@
 % RKN1210_DEMO         small demonstration of RKN1210-integrator
 %
 % Run this function for a small demonstration of the Runge-Kutta-Nystrom
-% 12th/10th order integrator for second-order ODE's. 
+% 12th/10th order integrator for second-order ODE's.
 %
-% See also RKN1210, RKN86, ODE86, ODE113, DEVAL, ODESET, ODEGET. 
+% See also RKN1210, RKN86, ODE86, ODE113, DEVAL, ODESET, ODEGET.
 function rkn1210_DEMO
 
-% Please report bugs and inquiries to: 
+% Please report bugs and inquiries to:
 %
 % Name       : Rody P.S. Oldenhuis
-% E-mail     : oldenhuis@gmail.com    (personal)
-%              oldenhuis@luxspace.lu  (professional)
-% Affiliation: LuxSpace sàrl
-% Licence    : BSD
-%
-% Please report any bugs or suggestions to oldenhuis@gmail.com
-
+% E-mail     : oldenhuis@gmail.com
+% Licence    : 2-clause BSD (See Licence.txt)
 
 % If you find this work useful and want to show your appreciation:
 % https://www.paypal.me/RodyO/3.5
 
 % If you want to cite this work in an academic paper, please use
 % the following template:
-% 
+%
 % Rody Oldenhuis, orcid.org/0000-0002-3162-3660. "RKN1210" <version>,
-% <date you last used it>. MATLAB implementation of an embedded 12/10th order 
+% <date you last used it>. MATLAB implementation of an embedded 12/10th order
 % Runge-Kutta-Nyström integrator for second-order ordinary differential equations.
 % https://nl.mathworks.com/matlabcentral/fileexchange/25291-rkn1210
 
 
     %% Initialize
-    
+
     % optimize figure window sizes
     scz      = get(0, 'screensize');
     position = @(width,height) [scz(3:4)/2-[width, height]/2, width, height];
-  
+
     oldInterpreter = get(0, 'defaulttextinterpreter');
     set(0, 'defaulttextinterpreter', 'none')
-    
+
     %% Elementary example: Circular orbit
 
     % define function
     f = @(t,y) -y/norm(y)^3;
-    
+
     % show message
     uiwait(msgbox({
         ['The class of Runge-Kutta-Nystrom (RKN) integrators are very efficient for second-order ',...
@@ -60,11 +55,11 @@ function rkn1210_DEMO
         'First demonstration','modal'));
 
     % start integration
-    options = odeset('abstol', 1e-15);    
+    options = odeset('abstol', 1e-15);
     [t,y, dummy_,dummy_, output] = rkn1210(f, 2*pi*[0 25], [1;0], [0;1], options);%#ok
 
     % show results
-    
+
     % The orbit should be *exactly* circular
     figure(1), clf, hold on
     set(1, 'position', position(800, 600));
@@ -72,7 +67,7 @@ function rkn1210_DEMO
     plot(y(:,1), y(:,2), '.k', 'markersize', 1);
     title('Normalized circular orbit'), xlabel('X'), ylabel('Y')
     axis equal, axis tight
-    
+
     % We can easily plot the x- and y-error
     subplot(2,2,2), hold on
     Xerr = abs(y(:,1) - cos(t));
@@ -81,20 +76,20 @@ function rkn1210_DEMO
     title('Absolute error')
     xlabel('step #'), ylabel('error')
     axis tight
-    
+
     % Also plot the step magnitude and error estimate
     subplot(2,2,3), hold on
-    plot(output.stepsize, 'b')    
-    title('Step size [s]') 
+    plot(output.stepsize, 'b')
+    title('Step size [s]')
     xlabel('step #'), ylabel('magnitude')
     axis tight
-    
+
     subplot(2,2,4), hold on
     plot(cumsum(output.estimated_error), 'r')
-    title('Estimated accumulated error') 
+    title('Estimated accumulated error')
     xlabel('step #'), ylabel('magnitude')
     axis tight
-            
+
     % show exit message
     pause(1)
     uiwait(msgbox({
@@ -109,10 +104,10 @@ function rkn1210_DEMO
         [' Now let''s try a more realistic example; a 200×10000 km elliptical ',...
         'orbit around the Earth, including the Earth''s oblateness around the equator, for 5 ',...
         'revolutions:']}, ...
-        'Second demonstration', 'modal')); 
-    
+        'Second demonstration', 'modal'));
+
     %% Elliptic orbit
-    
+
     % define differential equation
     muE = 398600.4418;
     RE  = 6738;
@@ -127,8 +122,8 @@ function rkn1210_DEMO
         pp = 3/2*muE*J2*RE2/rmag^5;
         z2r2 = 5*(y(3)/rmag)^2;
         d2ydt2 = d2ydt2 - pp*y.*[1-z2r2; 1-z2r2; 3-z2r2];
-    end      
-    
+    end
+
     % start integration
     options = odeset('abstol',5e-14, 'reltol',5e-14); % loosen constraints a bit (for speed)
     ra  = RE+10000;  % apogee
@@ -139,7 +134,7 @@ function rkn1210_DEMO
     y0  = [rp 0 0]; % initial position
     yp0 = [0 Vp Vp]*sqrt(2)/2; % initial velocity
     [t, y, dummy_,dummy_, output] = rkn1210(@f2, [0 5*T], y0, yp0, options);%#ok
-        
+
     % show results
     figure(1), clf, hold on
     set(1, 'position', position(800, 600));
@@ -151,20 +146,20 @@ function rkn1210_DEMO
     title('Integrated elliptic orbit')
     xlabel('X [km]'), ylabel('Y [km]'), ylabel('Z [km]')
     axis equal, axis tight, view(-102,44)
-    
+
     % Also plot the step magnitude and error estimate
     subplot(2,2,2), hold on
-    plot(output.stepsize, 'b')    
-    title('Time step per iteration') 
+    plot(output.stepsize, 'b')
+    title('Time step per iteration')
     xlabel('step #'), ylabel('Step size [s]')
     axis tight
-    
+
     subplot(2,2,4), hold on
     plot(output.estimated_error, 'r')
-    title('Error estimate') 
+    title('Error estimate')
     xlabel('step #'), ylabel('magnitude [km]')
     axis tight
-    
+
     % show exit message
     pause(1)
     uiwait(msgbox({[
@@ -178,9 +173,9 @@ function rkn1210_DEMO
         ['This RKN1210-function also supports ''output functions'', functions that are called ',...
         'after each successful integration step. This can be used to produce a progress bar, for example:']},...
         'Third demonstration','modal'));
-    
+
     %% Using output functions
-          
+
     % Close previous figure
     close(1);
 
@@ -193,28 +188,28 @@ function rkn1210_DEMO
         'abstol'   , 1e-16,...
         'outputfcn', @OutputFcn1);
     [t, y, dummy_,dummy_, output] = rkn1210(f, [0 tend], [1;0], [0;1.413], options);%#ok
-    
+
     % the output function
     function stop = OutputFcn1(t,y,dy,flag)%#ok
         % don't stop
         stop = false;
         % only after successful steps
-        if isempty(flag)        
+        if isempty(flag)
             wait = waitbar(t/tend, wait); end
     end
-    
+
     % kill waitbar
     close(wait)
-        
+
     % Plot the circular orbit
     figure(1), clf, hold on
     set(1, 'position', position(800, 600));
     plot(y(:,1), y(:,2), 'k', 'markersize', 10);
     title('Integrated high-eccentricity orbit'), xlabel('X'), ylabel('Y')
     axis equal, axis tight
-    
+
     %% Using event functions
-  
+
     pause(1)
     uiwait(msgbox({[
         'Aside from output functions, this integrator also supports ''event functions''. ',...
@@ -225,34 +220,34 @@ function rkn1210_DEMO
         'to display the instantaneous integration step, and an event function that detects when the ',...
         'Y-coordinate becomes negative. When this happens, the integration is terminated:']}, ...
         'Fourth demonstration', 'modal'));
- 
+
     % initialize figure
     figure(1), clf, hold on
-                
-    % start integration (circular orbit again)    
+
+    % start integration (circular orbit again)
     options = odeset(...
         'abstol'   , 1e-16,...
         'outputfcn', @OutputFcn2,...
         'events'   , @EventFcn);
     [t, y, dy, TE,YE] = rkn1210(f, 2*pi*[0, 25], [1;0], [0;1], options);%#ok
-        
+
     % plot final point
     plot(YE(1), YE(2), 'rx')
     text(-.9, 0 ,'<--  Event: y < 0; integration stopped', 'interpreter', 'none')
-            
+
     % the output function
     function stop = OutputFcn2(t,y,dy,flag)%#ok
         % don't stop
         stop = false;
         % only after sucessfull steps
-        if isempty(flag)       
+        if isempty(flag)
             plot(y(1), y(2), 'b.')
-            axis equal, axis([-1.2 1.2 -.2 1.2])  
+            axis equal, axis([-1.2 1.2 -.2 1.2])
             title(sprintf('Plot generated by output function; time is %f', t))
             pause(0.1), drawnow % flush plotting commands
         end
     end
-    
+
     % the event function
     function [value, isterminal, direction] = EventFcn(t,y,dy)%#ok
         % stop upon event? Yup:
@@ -262,16 +257,16 @@ function rkn1210_DEMO
         % value is simply Y-coordinate
         value = y(2);
     end
-    
+
     %% Thanks & enjoy
-    
+
     pause(1)
     uiwait(msgbox(['That''s about it. Please look inside this Demo to learn how to use these features. ',...
     'Please send any bugs you find to oldenhuis@gmail.com'],...
     'That''s all Folks!', 'modal'));
     close(1)
-    
+
     set(0, 'defaulttextinterpreter', oldInterpreter);
-    
+
 end
- 
+

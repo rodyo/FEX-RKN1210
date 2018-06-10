@@ -1,4 +1,6 @@
 % Changelog: 
+2018/June
+- CHANGED removed affiliation info & updated license
 
 2015/May/27 (Rody Oldenhuis)
 - CHANGED: refarctored all code for better readability
