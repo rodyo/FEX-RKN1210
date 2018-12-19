@@ -647,8 +647,8 @@ function varargout = rkn1210_sparse_output(input)
     y    = input.y0(:);       hmin      = 16*eps(t);
     dy   = input.yp0(:);      f         = input.y0(:)*zeros(1,17);
     opts = input.options;     direction = 1 - 2*(tfinal < t0);
-    f1   = 0.8;
-    f2   = 10;
+    f1   = 0.90; % <- safety factor in determination of new step 
+    f2   = 11;   % <- twiggle factor for error estimation 
 
     % IO variables
     if nargout ~= 0
@@ -977,8 +977,9 @@ function output = detect_Event(input, output,which_event, value)
                   'InitialStep', output.info.stepsize(output.index-1) );
 
     % Start root finding process
-    while (min(abs(fa),abs(fb)) > opts.AbsTol)
-
+    while ( min(abs(fa),abs(fb)) > opts.AbsTol || ...
+            min(abs(fa),abs(fb)) > opts.RelTol * max(abs([y0(:);dy0(:)])) )
+        
         % Regula-falsi step
         iterations = iterations + 1;
         ttp = tt;
